@@ -4,10 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ELX Freight Control</title>
+  <!-- CSP to allow connections to Azure Functions -->
+  <meta http-equiv="Content-Security-Policy" 
+        content="default-src 'self'; connect-src 'self' https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net; script-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline';">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <!-- Removed Tesseract.js – we use Azure AI now -->
   <style>
-    /* ... (your existing styles – unchanged) ... */
     :root {
       --elx-red: #d71920;
       --elx-red-dark: #ad1117;
@@ -35,8 +37,6 @@
       --kpi-h: 104px;
     }
 
-    /* ... (all your existing CSS – unchanged) ... */
-    /* I'm keeping all your styles exactly as they were */
     * { box-sizing: border-box; }
     html, body { width: 100%; height: 100%; }
     body {
@@ -612,7 +612,6 @@
   </style>
 </head>
 <body>
-  <!-- The HTML structure is exactly the same as your original -->
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
@@ -925,7 +924,7 @@
 
   <script>
     // --- CONFIGURATION ---
-    // Point to your local Azure Functions backend
+    // Point to your live Azure Functions backend
     const API_BASE = 'https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net/api';
 
     // --- EXISTING STATE & HELPERS (unchanged) ---
