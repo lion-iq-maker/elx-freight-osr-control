@@ -1,0 +1,11 @@
+{
+  "name": "elx-freight-osr-backend",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/functions": "^3.5.1",
+    "mssql": "^12.7.0"
+  }
+}
