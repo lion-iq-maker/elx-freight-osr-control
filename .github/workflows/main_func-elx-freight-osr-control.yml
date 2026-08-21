@@ -28,6 +28,6 @@ jobs:
       - name: Deploy to Azure Functions
         uses: Azure/functions-action@v1
         with:
-          app-name: 'elx-freight-api-rt'
+          app-name: 'func-elx-freight-osr-control-gphyhsaqhdhhc5bd'
           package: 'backend'
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
