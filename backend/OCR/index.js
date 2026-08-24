@@ -22,15 +22,12 @@ module.exports = async function (context, req) {
     }
 
     try {
-        // Convert base64 to Buffer
         const imageBuffer = Buffer.from(imageBase64, 'base64');
 
-        // Build the analyze request
         const modelId = 'prebuilt-document';
         const apiVersion = '2023-07-31';
         const analyzeUrl = `${endpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=${apiVersion}`;
 
-        // Send to Azure Document Intelligence (as bytes)
         const response = await fetch(analyzeUrl, {
             method: 'POST',
             headers: {
@@ -50,7 +47,6 @@ module.exports = async function (context, req) {
             throw new Error('No operation-location header returned from Azure.');
         }
 
-        // Poll for completion
         let result = null;
         let attempts = 0;
         const maxAttempts = 30;
@@ -77,42 +73,64 @@ module.exports = async function (context, req) {
             throw new Error('Analysis timed out after 30 seconds.');
         }
 
-        // Extract key-value pairs
-        const keyValuePairs = {};
-        if (result.documents && result.documents.length > 0) {
-            const doc = result.documents[0];
-            if (doc.fields) {
-                for (const [key, field] of Object.entries(doc.fields)) {
-                    if (field.content) {
-                        keyValuePairs[key] = field.content;
-                    }
-                }
-            }
-        }
+        // Helper to normalize key names
+        const normalizeKey = (key) => {
+            if (!key) return '';
+            return key.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
+        };
 
+        // Build a normalized map of all key-value pairs
+        const allPairs = {};
         if (result.keyValuePairs) {
             for (const kv of result.keyValuePairs) {
                 const key = kv.key?.content || '';
                 const value = kv.value?.content || '';
                 if (key && value) {
-                    keyValuePairs[key] = value;
+                    const normalized = normalizeKey(key);
+                    allPairs[normalized] = value;
+                }
+            }
+        }
+        // Also include fields from documents
+        if (result.documents && result.documents.length > 0) {
+            const doc = result.documents[0];
+            if (doc.fields) {
+                for (const [key, field] of Object.entries(doc.fields)) {
+                    if (field.content) {
+                        const normalized = normalizeKey(key);
+                        allPairs[normalized] = field.content;
+                    }
                 }
             }
         }
 
-        // Map to expected fields
-        const extracted = {
-            supplier: keyValuePairs['Supplier'] || keyValuePairs['Vendor'] || keyValuePairs['Sender'] || '',
-            po: keyValuePairs['PO Number'] || keyValuePairs['Purchase Order'] || keyValuePairs['PO'] || '',
-            site: keyValuePairs['Site'] || keyValuePairs['Destination'] || keyValuePairs['Delivery Site'] || '',
-            connote: keyValuePairs['Connote'] || keyValuePairs['Consignment'] || keyValuePairs['Tracking'] || '',
-            reference: keyValuePairs['Reference'] || keyValuePairs['Ref'] || keyValuePairs['Docket'] || '',
-            qty: keyValuePairs['Quantity'] || keyValuePairs['Qty'] || keyValuePairs['Items'] || '',
-            contractor: keyValuePairs['Contractor'] || keyValuePairs['BHP Contractor'] || '',
-            weight: keyValuePairs['Weight'] || keyValuePairs['Kg'] || '',
-            itemType: keyValuePairs['Item Type'] || keyValuePairs['Type'] || '',
-            rawText: result.content || '',
+        // Define mapping with multiple synonyms
+        const map = {
+            supplier: ['supplier', 'vendor', 'sender', 'from', 'consignor', 'shipper', 'shipped by'],
+            po: ['po number', 'purchase order', 'po', 'p/o', 'order number'],
+            site: ['site', 'destination', 'delivery site', 'location', 'consignee', 'deliver to'],
+            contractor: ['contractor', 'bhp contractor', 'contractor name', 'company'],
+            connote: ['connote', 'consignment', 'tracking', 'tracking number', 'waybill', 'airway bill'],
+            reference: ['reference', 'ref', 'docket', 'booking', 'order ref', 'customer ref'],
+            qty: ['quantity', 'qty', 'items', 'pieces', 'pcs', 'cartons', 'unit count'],
+            weight: ['weight', 'kg', 'gross weight', 'net weight', 'mass'],
+            itemType: ['item type', 'type', 'description', 'product', 'goods description']
         };
+
+        const extracted = {};
+        for (const [key, synonyms] of Object.entries(map)) {
+            for (const syn of synonyms) {
+                const normalized = normalizeKey(syn);
+                if (allPairs[normalized]) {
+                    extracted[key] = allPairs[normalized];
+                    break;
+                }
+            }
+            if (!extracted[key]) extracted[key] = ''; // ensure always a string
+        }
+
+        // Also keep raw text for debugging
+        extracted.rawText = result.content || '';
 
         context.res = {
             status: 200,
