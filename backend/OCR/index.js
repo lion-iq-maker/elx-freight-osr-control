@@ -73,7 +73,7 @@ module.exports = async function (context, req) {
             throw new Error('Analysis timed out after 30 seconds.');
         }
 
-        // ========== NEW EXTRACTION LOGIC ==========
+        // ========== NEW ROBUST EXTRACTION ==========
         const rawText = result.content || '';
         const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
@@ -89,7 +89,7 @@ module.exports = async function (context, req) {
             itemType: ''
         };
 
-        // Define mapping: field -> array of possible key substrings (case-insensitive)
+        // Mapping: field -> array of key phrases (case-insensitive)
         const keyMap = [
             { field: 'supplier', keys: ['supplier', 'sender', 'vendor', 'from', 'shipper'] },
             { field: 'po', keys: ['po number', 'purchase order', 'po', 'p/o'] },
@@ -102,64 +102,81 @@ module.exports = async function (context, req) {
             { field: 'itemType', keys: ['item type', 'type', 'description', 'product'] }
         ];
 
-        // Helper to extract value from a line given a key
-        const extractValue = (line, key) => {
-            // Try to find the key in the line (case-insensitive)
+        // Helper: extract value from a line given a key phrase
+        const extractValue = (line, keyPhrase) => {
             const lowerLine = line.toLowerCase();
-            const lowerKey = key.toLowerCase();
+            const lowerKey = keyPhrase.toLowerCase();
             const idx = lowerLine.indexOf(lowerKey);
             if (idx === -1) return null;
-            // Get the rest of the line after the key
-            let rest = line.substring(idx + key.length).trim();
-            // Remove leading delimiters like colon, dash, asterisk, slash
-            rest = rest.replace(/^[:#\-*\/\s]+/, '').trim();
-            return rest || null;
+
+            // Get the part after the key
+            let rest = line.substring(idx + keyPhrase.length);
+
+            // Find the last delimiter (*, /, :, -, |) in this remaining string
+            const delimiterMatch = rest.match(/^[^*/:\-|]*([*/:\-|])\s*/);
+            if (delimiterMatch) {
+                // Split by that delimiter and take the last part
+                const parts = rest.split(delimiterMatch[1]);
+                // Take the last non-empty part
+                const lastPart = parts[parts.length - 1].trim();
+                if (lastPart) return lastPart;
+            }
+
+            // If no delimiter found, just return the trimmed rest
+            const trimmed = rest.trim();
+            return trimmed || null;
         };
 
-        // First pass: look for key-value on the same line
+        // First pass: same-line extraction
         for (const line of lines) {
-            for (const entry of keyMap) {
-                if (extracted[entry.field]) continue; // already found
-                for (const key of entry.keys) {
-                    if (line.toLowerCase().includes(key.toLowerCase())) {
-                        const val = extractValue(line, key);
-                        if (val) {
-                            extracted[entry.field] = val;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Second pass: if a field is still empty, look for key on one line and value on the next line
-        for (let i = 0; i < lines.length - 1; i++) {
-            const currentLine = lines[i];
-            const nextLine = lines[i + 1];
             for (const entry of keyMap) {
                 if (extracted[entry.field]) continue;
                 for (const key of entry.keys) {
-                    if (currentLine.toLowerCase().includes(key.toLowerCase())) {
-                        // Check if the current line has no value (or value is just the key)
-                        const valOnSameLine = extractValue(currentLine, key);
-                        if (!valOnSameLine || valOnSameLine.length < 3) {
-                            // Use the next line as value if it looks like a value (not a key)
-                            const nextLower = nextLine.toLowerCase();
-                            const isNextLineKey = keyMap.some(e => e.keys.some(k => nextLower.includes(k.toLowerCase())));
-                            if (!isNextLineKey && nextLine.length > 1) {
-                                extracted[entry.field] = nextLine;
-                            }
-                        }
+                    const val = extractValue(line, key);
+                    if (val) {
+                        // Clean up: remove common noise like trailing "*" or "/"
+                        extracted[entry.field] = val.replace(/[\s*\/]+$/, '').trim();
                         break;
                     }
                 }
             }
         }
 
-        // Clean up extracted values: remove common noise like trailing asterisks or slashes
+        // Second pass: multi-line (key on one line, value on next)
+        for (let i = 0; i < lines.length - 1; i++) {
+            const currentLine = lines[i];
+            const nextLine = lines[i + 1];
+            for (const entry of keyMap) {
+                if (extracted[entry.field]) continue;
+                for (const key of entry.keys) {
+                    // Check if current line contains the key and has no obvious value
+                    if (currentLine.toLowerCase().includes(key.toLowerCase())) {
+                        // Check if the current line has a value already (avoid overwriting)
+                        const valOnSameLine = extractValue(currentLine, key);
+                        if (!valOnSameLine || valOnSameLine.length < 3) {
+                            // Use next line as value if it doesn't look like a key
+                            const nextLower = nextLine.toLowerCase();
+                            const isNextLineKey = keyMap.some(e => e.keys.some(k => nextLower.includes(k.toLowerCase())));
+                            if (!isNextLineKey && nextLine.length > 1) {
+                                extracted[entry.field] = nextLine.replace(/[\s*\/]+$/, '').trim();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Clean up extracted values
         for (const [field, value] of Object.entries(extracted)) {
             if (value) {
-                extracted[field] = value.replace(/\s*[\/\*]+\s*$/, '').trim();
+                // Remove trailing asterisks, slashes, spaces
+                extracted[field] = value.replace(/[\s*\/]+$/, '').trim();
+                // If value contains a delimiter like * or /, take the last part
+                const parts = value.split(/[*\/]/);
+                if (parts.length > 1) {
+                    extracted[field] = parts[parts.length - 1].trim();
+                }
             }
         }
 
