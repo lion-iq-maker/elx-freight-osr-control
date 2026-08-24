@@ -11,9 +11,142 @@ module.exports = async function (context, req) {
         return;
     }
 
-    const body = req.body || {};
+    // --- GET: list receipts with item summaries ---
+    if (req.method === 'GET') {
+        return handleGet(context, req, connectionString);
+    }
 
-    // Required fields: supplier, site, receivedBy, items
+    // --- POST: create a new receipt ---
+    if (req.method === 'POST') {
+        return handlePost(context, req, connectionString);
+    }
+
+    context.res = {
+        status: 405,
+        body: JSON.stringify({ error: 'Method not allowed' })
+    };
+};
+
+// ========== HANDLE GET ==========
+async function handleGet(context, req, connectionString) {
+    try {
+        const pool = await sql.connect(connectionString);
+
+        const search = req.query.search || '';
+        const status = req.query.status || '';
+        const locationId = req.query.locationId || '';
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 50;
+        const offset = (page - 1) * pageSize;
+
+        let baseQuery = `
+            SELECT
+                r.id,
+                r.gr_number AS grNumber,
+                r.supplier,
+                r.delivery_site AS site,
+                r.po_number AS po,
+                r.current_status AS status,
+                l.name AS location,
+                r.received_by_display_name AS receivedBy,
+                r.updated_at_utc AS updatedAt,
+                (
+                    SELECT STRING_AGG(CONCAT(item_type, ' x', quantity), ', ')
+                    FROM FreightItems fi
+                    WHERE fi.receipt_id = r.id
+                ) AS itemsSummary,
+                (
+                    SELECT SUM(quantity)
+                    FROM FreightItems fi
+                    WHERE fi.receipt_id = r.id
+                ) AS totalQty,
+                (
+                    SELECT SUM(weight_kg)
+                    FROM FreightItems fi
+                    WHERE fi.receipt_id = r.id
+                ) AS totalWeight
+            FROM FreightReceipts r
+            LEFT JOIN Locations l ON r.current_location_id = l.id
+            WHERE 1=1
+        `;
+
+        const conditions = [];
+        const params = [];
+
+        if (search) {
+            conditions.push(`(
+                r.gr_number LIKE @search
+                OR r.supplier LIKE @search
+                OR r.po_number LIKE @search
+                OR r.delivery_site LIKE @search
+                OR r.connote LIKE @search
+                OR r.other_reference LIKE @search
+            )`);
+            params.push({ name: 'search', value: `%${search}%`, type: sql.NVarChar });
+        }
+
+        if (status) {
+            conditions.push(`r.current_status = @status`);
+            params.push({ name: 'status', value: status, type: sql.NVarChar });
+        }
+
+        if (locationId) {
+            conditions.push(`r.current_location_id = @locationId`);
+            params.push({ name: 'locationId', value: parseInt(locationId), type: sql.Int });
+        }
+
+        if (conditions.length > 0) {
+            baseQuery += ' AND ' + conditions.join(' AND ');
+        }
+
+        const orderBy = `ORDER BY r.updated_at_utc DESC OFFSET ${offset} ROWS FETCH NEXT ${pageSize} ROWS ONLY`;
+        const query = baseQuery + ' ' + orderBy;
+
+        const request = pool.request();
+        for (const p of params) {
+            request.input(p.name, p.type, p.value);
+        }
+        const result = await request.query(query);
+
+        // Total count for pagination
+        let countQuery = `
+            SELECT COUNT(*) AS total
+            FROM FreightReceipts r
+            WHERE 1=1
+        `;
+        if (conditions.length > 0) {
+            countQuery += ' AND ' + conditions.join(' AND ');
+        }
+        const countRequest = pool.request();
+        for (const p of params) {
+            countRequest.input(p.name, p.type, p.value);
+        }
+        const countResult = await countRequest.query(countQuery);
+        const total = countResult.recordset[0].total;
+
+        context.res = {
+            status: 200,
+            body: JSON.stringify({
+                records: result.recordset,
+                total: total,
+                page: page,
+                pageSize: pageSize,
+                totalPages: Math.ceil(total / pageSize)
+            })
+        };
+
+    } catch (error) {
+        context.log.error('Error fetching receipts:', error);
+        context.res = {
+            status: 500,
+            body: JSON.stringify({ error: error.message })
+        };
+    }
+}
+
+// ========== HANDLE POST ==========
+async function handlePost(context, req, connectionString) {
+    const body = req.body || {};
     const required = ['supplier', 'site', 'receivedBy'];
     const missing = required.filter(f => !body[f]);
     if (missing.length) {
@@ -38,7 +171,6 @@ module.exports = async function (context, req) {
         await transaction.begin();
 
         try {
-            // Generate GR number
             const grDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
             const countResult = await transaction.request().query(
                 `SELECT COUNT(*) AS count FROM FreightReceipts WHERE gr_number LIKE 'ELX-GR-${grDate}-%'`
@@ -46,19 +178,17 @@ module.exports = async function (context, req) {
             const sequence = String(Number(countResult.recordset[0].count) + 1).padStart(5, '0');
             const grNumber = `ELX-GR-${grDate}-${sequence}`;
 
-            // --- Location is optional. If provided, look it up; if not, set to NULL ---
             let locationId = null;
             if (body.location) {
                 const locationResult = await transaction.request()
                     .input('locationName', sql.NVarChar, body.location)
                     .query(`SELECT id FROM Locations WHERE name = @locationName`);
                 if (locationResult.recordset.length === 0) {
-                    throw new Error(`Location "${body.location}" not found in database.`);
+                    throw new Error(`Location "${body.location}" not found`);
                 }
                 locationId = locationResult.recordset[0].id;
             }
 
-            // Staff lookup
             const staffResult = await transaction.request()
                 .input('displayName', sql.NVarChar, body.receivedBy)
                 .query(`SELECT id FROM Staff WHERE display_name = @displayName`);
@@ -67,7 +197,6 @@ module.exports = async function (context, req) {
             }
             const userId = staffResult.recordset[0].id;
 
-            // Insert receipt
             const now = new Date().toISOString();
             const receiptResult = await transaction.request()
                 .input('grNumber', sql.NVarChar, grNumber)
@@ -79,7 +208,7 @@ module.exports = async function (context, req) {
                 .input('connote', sql.NVarChar, body.connote || null)
                 .input('notes', sql.NVarChar, body.notes || null)
                 .input('status', sql.NVarChar, 'Goods Received')
-                .input('locationId', sql.Int, locationId) // can be NULL
+                .input('locationId', sql.Int, locationId)
                 .input('userId', sql.Int, userId)
                 .input('displayName', sql.NVarChar, body.receivedBy)
                 .input('receivedAt', sql.DateTime2, now)
@@ -100,7 +229,6 @@ module.exports = async function (context, req) {
                 `);
             const receiptId = receiptResult.recordset[0].id;
 
-            // Insert items
             for (const item of body.items) {
                 await transaction.request()
                     .input('receiptId', sql.BigInt, receiptId)
@@ -113,12 +241,11 @@ module.exports = async function (context, req) {
                     `);
             }
 
-            // Insert lifecycle event (location may be NULL)
             await transaction.request()
                 .input('receiptId', sql.BigInt, receiptId)
                 .input('eventType', sql.NVarChar, 'GOODS_RECEIVED')
                 .input('newStatus', sql.NVarChar, 'Goods Received')
-                .input('newLocationId', sql.Int, locationId) // can be NULL
+                .input('newLocationId', sql.Int, locationId)
                 .input('userId', sql.Int, userId)
                 .input('displayName', sql.NVarChar, body.receivedBy)
                 .input('performedAt', sql.DateTime2, now)
@@ -140,7 +267,6 @@ module.exports = async function (context, req) {
                     )
                 `);
 
-            // Generate token
             const rawToken = crypto.randomBytes(32).toString('hex');
             const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
@@ -186,4 +312,4 @@ module.exports = async function (context, req) {
             body: JSON.stringify({ error: error.message })
         };
     }
-};
+}
