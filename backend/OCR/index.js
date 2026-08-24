@@ -24,9 +24,10 @@ module.exports = async function (context, req) {
     try {
         const imageBuffer = Buffer.from(imageBase64, 'base64');
 
-        const modelId = 'prebuilt-document';
-        const apiVersion = '2023-07-31';
-        const analyzeUrl = `${endpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=${apiVersion}`;
+        // SWITCHED: Use Layout model with keyValuePairs feature
+        const modelId = 'prebuilt-layout';
+        const apiVersion = '2024-11-30';  // Latest GA version
+        const analyzeUrl = `${endpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=${apiVersion}&features=keyValuePairs`;
 
         const response = await fetch(analyzeUrl, {
             method: 'POST',
@@ -73,38 +74,42 @@ module.exports = async function (context, req) {
             throw new Error('Analysis timed out after 30 seconds.');
         }
 
-        // Helper to normalize key names
-        const normalizeKey = (key) => {
-            if (!key) return '';
-            return key.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
-        };
-
-        // Build a normalized map of all key-value pairs
+        // Extract key-value pairs
         const allPairs = {};
+        
+        // Method 1: From keyValuePairs (primary)
         if (result.keyValuePairs) {
             for (const kv of result.keyValuePairs) {
                 const key = kv.key?.content || '';
                 const value = kv.value?.content || '';
                 if (key && value) {
-                    const normalized = normalizeKey(key);
+                    const normalized = key.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
                     allPairs[normalized] = value;
                 }
             }
         }
-        // Also include fields from documents
+
+        // Method 2: From documents.fields (fallback)
         if (result.documents && result.documents.length > 0) {
             const doc = result.documents[0];
             if (doc.fields) {
                 for (const [key, field] of Object.entries(doc.fields)) {
                     if (field.content) {
-                        const normalized = normalizeKey(key);
+                        const normalized = key.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
                         allPairs[normalized] = field.content;
                     }
                 }
             }
         }
 
-        // Define mapping with multiple synonyms
+        // Method 3: Fallback to raw text search if keyValuePairs is empty
+        const rawText = result.content || '';
+        const fallbackExtract = (pattern) => {
+            const match = rawText.match(new RegExp(pattern + '\\s*[:#\\-]?\\s*(.*?)(?:\\n|$)', 'i'));
+            return match ? match[1].trim() : '';
+        };
+
+        // Define mapping with synonyms
         const map = {
             supplier: ['supplier', 'vendor', 'sender', 'from', 'consignor', 'shipper', 'shipped by'],
             po: ['po number', 'purchase order', 'po', 'p/o', 'order number'],
@@ -119,18 +124,27 @@ module.exports = async function (context, req) {
 
         const extracted = {};
         for (const [key, synonyms] of Object.entries(map)) {
+            let found = '';
+            // First try from keyValuePairs
             for (const syn of synonyms) {
-                const normalized = normalizeKey(syn);
+                const normalized = syn.toLowerCase().replace(/[^a-z0-9 ]/g, '');
                 if (allPairs[normalized]) {
-                    extracted[key] = allPairs[normalized];
+                    found = allPairs[normalized];
                     break;
                 }
             }
-            if (!extracted[key]) extracted[key] = ''; // ensure always a string
+            // If not found, try fallback from raw text
+            if (!found) {
+                const pattern = synonyms.join('|');
+                found = fallbackExtract(pattern);
+            }
+            extracted[key] = found || '';
         }
 
         // Also keep raw text for debugging
-        extracted.rawText = result.content || '';
+        extracted.rawText = rawText;
+
+        context.log('Extracted:', extracted);
 
         context.res = {
             status: 200,
