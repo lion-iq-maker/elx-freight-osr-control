@@ -4,287 +4,74 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ELX Freight Control</title>
-  <!-- CSP: allow self, Azure API, blob for image fetch, and CDN scripts -->
- <meta http-equiv="Content-Security-Policy" 
-      content="default-src 'self'; connect-src 'self' blob: https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net blob:; worker-src 'self' blob:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline';">
+  <!-- CSP: allow self, Azure API, blob for images, workers for HEIC conversion -->
+  <meta http-equiv="Content-Security-Policy" 
+        content="default-src 'self'; connect-src 'self' blob: https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net blob:; worker-src 'self' blob:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline';">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <style>
-    :root {
-      --elx-red: #d71920;
-      --elx-red-dark: #ad1117;
-      --ink: #101827;
-      --ink-2: #334155;
-      --muted: #64748b;
-      --line: #e2e8f0;
-      --panel: #ffffff;
-      --soft: #f8fafc;
-      --soft-2: #f1f5f9;
-      --sidebar: #070b13;
-      --green: #16a34a;
-      --green-soft: #ecfdf5;
-      --amber: #d97706;
-      --amber-soft: #fffbeb;
-      --red-soft: #fef2f2;
-      --blue: #2563eb;
-      --blue-soft: #eff6ff;
-      --purple: #7c3aed;
-      --purple-soft: #f5f3ff;
-      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-      --radius: 18px;
-      --header-h: 88px;
-      --status-h: 38px;
-      --kpi-h: 104px;
-    }
-
-    * { box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; }
-    body {
-      margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--ink);
-      background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
-      overflow: hidden;
-    }
+    /* ========== YOUR EXISTING STYLES (unchanged) ========== */
+    :root { --elx-red: #d71920; --elx-red-dark: #ad1117; --ink: #101827; --ink-2: #334155; --muted: #64748b; --line: #e2e8f0; --panel: #ffffff; --soft: #f8fafc; --soft-2: #f1f5f9; --sidebar: #070b13; --green: #16a34a; --green-soft: #ecfdf5; --amber: #d97706; --amber-soft: #fffbeb; --red-soft: #fef2f2; --blue: #2563eb; --blue-soft: #eff6ff; --purple: #7c3aed; --purple-soft: #f5f3ff; --shadow: 0 18px 45px rgba(15,23,42,0.08); --radius: 18px; --header-h: 88px; --status-h: 38px; --kpi-h: 104px; }
+    * { box-sizing: border-box; } html, body { width: 100%; height: 100%; }
+    body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%); overflow: hidden; }
     button, input, select { font-family: inherit; }
-    .app {
-      display: grid;
-      grid-template-columns: 250px 1fr;
-      height: 100vh;
-      min-height: 720px;
-    }
-    .sidebar {
-      background: radial-gradient(circle at top left, rgba(215,25,32,0.24), transparent 31%), var(--sidebar);
-      color: white;
-      padding: 16px 14px;
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid rgba(255,255,255,0.08);
-      overflow: hidden;
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      padding: 8px 7px 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-    .brand-mark {
-      width: 40px;
-      height: 40px;
-      border-radius: 14px;
-      background: linear-gradient(145deg, var(--elx-red), #ff474e);
-      display: grid;
-      place-items: center;
-      font-weight: 950;
-      box-shadow: 0 12px 30px rgba(215,25,32,0.35);
-      letter-spacing: -1px;
-    }
-    .brand h1 { margin: 0; font-size: 16px; line-height: 1.1; letter-spacing: -0.02em; }
-    .brand p { margin: 3px 0 0; font-size: 12px; color: #cbd5e1; }
-    .nav {
-      padding: 14px 0;
-      display: grid;
-      gap: 5px;
-      overflow: hidden;
-    }
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      padding: 10px 11px;
-      border-radius: 13px;
-      color: #cbd5e1;
-      font-size: 13px;
-      cursor: pointer;
-      transition: 0.18s ease;
-      user-select: none;
-    }
+    .app { display: grid; grid-template-columns: 250px 1fr; height: 100vh; min-height: 720px; }
+    .sidebar { background: radial-gradient(circle at top left, rgba(215,25,32,0.24), transparent 31%), var(--sidebar); color: white; padding: 16px 14px; display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.08); overflow: hidden; }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 8px 7px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .brand-mark { width: 40px; height: 40px; border-radius: 14px; background: linear-gradient(145deg, var(--elx-red), #ff474e); display: grid; place-items: center; font-weight: 950; box-shadow: 0 12px 30px rgba(215,25,32,0.35); letter-spacing: -1px; }
+    .brand h1 { margin: 0; font-size: 16px; line-height: 1.1; letter-spacing: -0.02em; } .brand p { margin: 3px 0 0; font-size: 12px; color: #cbd5e1; }
+    .nav { padding: 14px 0; display: grid; gap: 5px; overflow: hidden; }
+    .nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 11px; border-radius: 13px; color: #cbd5e1; font-size: 13px; cursor: pointer; transition: 0.18s ease; user-select: none; }
     .nav-item:hover { background: rgba(255,255,255,0.08); color: white; transform: translateX(2px); }
     .nav-item.active { background: white; color: var(--ink); font-weight: 850; }
     .nav-icon { width: 20px; text-align: center; }
     .sidebar-bottom { margin-top: auto; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px; }
-    .role-card {
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 16px;
-      padding: 12px;
-    }
-    .role-card .name { font-weight: 850; font-size: 13px; }
-    .role-card .meta { color: #cbd5e1; font-size: 12px; margin-top: 4px; }
-    main {
-      height: 100vh;
-      min-height: 720px;
-      padding: 16px;
-      overflow: hidden;
-      display: grid;
-      grid-template-rows: var(--header-h) var(--status-h) var(--kpi-h) 1fr;
-      gap: 10px;
-    }
-    .header {
-      background: rgba(255,255,255,0.88);
-      backdrop-filter: blur(14px);
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      padding: 14px 17px;
-      display: flex;
-      justify-content: space-between;
-      gap: 18px;
-      align-items: center;
-      min-height: 0;
-    }
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--elx-red);
-      font-weight: 900;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      margin-bottom: 4px;
-    }
-    .header h2 { margin: 0; font-size: 25px; line-height: 1.05; letter-spacing: -0.04em; }
-    .header p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+    .role-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; padding: 12px; }
+    .role-card .name { font-weight: 850; font-size: 13px; } .role-card .meta { color: #cbd5e1; font-size: 12px; margin-top: 4px; }
+    main { height: 100vh; min-height: 720px; padding: 16px; overflow: hidden; display: grid; grid-template-rows: var(--header-h) var(--status-h) var(--kpi-h) 1fr; gap: 10px; }
+    .header { background: rgba(255,255,255,0.88); backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); padding: 14px 17px; display: flex; justify-content: space-between; gap: 18px; align-items: center; min-height: 0; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: var(--elx-red); font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
+    .header h2 { margin: 0; font-size: 25px; line-height: 1.05; letter-spacing: -0.04em; } .header p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
     .header-actions { display: flex; gap: 9px; flex-wrap: wrap; justify-content: flex-end; }
-    .btn {
-      border: 0;
-      padding: 10px 12px;
-      border-radius: 13px;
-      cursor: pointer;
-      font-weight: 850;
-      font-size: 12px;
-      transition: 0.18s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      white-space: nowrap;
-    }
+    .btn { border: 0; padding: 10px 12px; border-radius: 13px; cursor: pointer; font-weight: 850; font-size: 12px; transition: 0.18s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
     .btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(15,23,42,0.12); }
-    .btn-primary { background: var(--elx-red); color: white; }
-    .btn-primary:hover { background: var(--elx-red-dark); }
+    .btn-primary { background: var(--elx-red); color: white; } .btn-primary:hover { background: var(--elx-red-dark); }
     .btn-dark { background: var(--ink); color: white; }
     .btn-light { background: white; color: var(--ink); border: 1px solid var(--line); }
     .btn-green { background: var(--green); color: white; }
     .btn-amber { background: var(--amber); color: white; }
     .btn-blue { background: var(--blue); color: white; }
     .btn-ghost { background: var(--soft-2); color: var(--ink-2); }
-    .status-bar {
-      background: #ecfdf5;
-      color: #047857;
-      border: 1px solid #bbf7d0;
-      padding: 9px 13px;
-      border-radius: 15px;
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 12px;
-      font-weight: 750;
-      align-items: center;
-      min-height: 0;
-    }
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(110px, 1fr));
-      gap: 10px;
-      min-height: 0;
-    }
-    .kpi {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 13px 14px;
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
-      position: relative;
-      overflow: hidden;
-      cursor: pointer;
-      transition: 0.18s ease;
-      min-width: 0;
-    }
+    .status-bar { background: #ecfdf5; color: #047857; border: 1px solid #bbf7d0; padding: 9px 13px; border-radius: 15px; display: flex; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 750; align-items: center; min-height: 0; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(6, minmax(110px, 1fr)); gap: 10px; min-height: 0; }
+    .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 13px 14px; box-shadow: 0 10px 30px rgba(15,23,42,0.04); position: relative; overflow: hidden; cursor: pointer; transition: 0.18s ease; min-width: 0; }
     .kpi:hover { transform: translateY(-2px); border-color: rgba(215,25,32,0.25); }
     .kpi::after { content: ""; position: absolute; right: -24px; top: -24px; width: 78px; height: 78px; border-radius: 999px; background: currentColor; opacity: 0.08; }
     .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 900; }
     .kpi .value { margin-top: 7px; font-size: 27px; font-weight: 950; letter-spacing: -0.05em; }
     .kpi .hint { margin-top: 2px; color: var(--muted); font-size: 11px; }
-    .kpi.red { color: var(--elx-red); }
-    .kpi.green { color: var(--green); }
-    .kpi.amber { color: var(--amber); }
-    .kpi.blue { color: var(--blue); }
-    .kpi.purple { color: var(--purple); }
-    .kpi.dark { color: var(--ink); }
+    .kpi.red { color: var(--elx-red); } .kpi.green { color: var(--green); } .kpi.amber { color: var(--amber); } .kpi.blue { color: var(--blue); } .kpi.purple { color: var(--purple); } .kpi.dark { color: var(--ink); }
     .view-stage { min-height: 0; overflow: hidden; }
-    .view { height: 100%; min-height: 0; display: none; }
-    .view.active { display: block; }
-    .dash-grid {
-      height: 100%;
-      display: grid;
-      grid-template-columns: minmax(0, 1.78fr) minmax(300px, 0.82fr);
-      gap: 10px;
-      min-height: 0;
-    }
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      overflow: hidden;
-      min-height: 0;
-    }
+    .view { height: 100%; min-height: 0; display: none; } .view.active { display: block; }
+    .dash-grid { height: 100%; display: grid; grid-template-columns: minmax(0, 1.78fr) minmax(300px, 0.82fr); gap: 10px; min-height: 0; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); overflow: hidden; min-height: 0; }
     .panel.fill { height: 100%; display: grid; grid-template-rows: auto 1fr; }
-    .panel-head {
-      padding: 13px 15px;
-      border-bottom: 1px solid var(--line);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      min-height: 56px;
-    }
-    .panel-head h3 { margin: 0; font-size: 15px; letter-spacing: -0.02em; }
-    .panel-head p { margin: 3px 0 0; font-size: 11px; color: var(--muted); }
+    .panel-head { padding: 13px 15px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 56px; }
+    .panel-head h3 { margin: 0; font-size: 15px; letter-spacing: -0.02em; } .panel-head p { margin: 3px 0 0; font-size: 11px; color: var(--muted); }
     .small-pill { border-radius: 999px; padding: 6px 9px; background: var(--soft-2); color: var(--ink-2); font-size: 11px; font-weight: 850; white-space: nowrap; }
-    .board {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(150px, 1fr));
-      gap: 9px;
-      padding: 10px;
-      overflow: hidden;
-      min-height: 0;
-    }
-    .lane {
-      min-height: 0;
-      background: var(--soft);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 9px;
-      display: grid;
-      grid-template-rows: auto 1fr;
-      overflow: hidden;
-    }
+    .board { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 9px; padding: 10px; overflow: hidden; min-height: 0; }
+    .lane { min-height: 0; background: var(--soft); border: 1px solid var(--line); border-radius: 18px; padding: 9px; display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
     .lane-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 2px 2px 8px; border-bottom: 1px solid var(--line); }
     .lane-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 950; color: var(--ink-2); }
     .lane-count { background: white; border: 1px solid var(--line); border-radius: 999px; padding: 3px 7px; font-size: 11px; font-weight: 950; }
     .lane-cards { overflow: hidden; }
-    .item-card {
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 15px;
-      padding: 10px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      transition: 0.18s ease;
-      box-shadow: 0 9px 22px rgba(15,23,42,0.04);
-      position: relative;
-    }
+    .item-card { background: white; border: 1px solid var(--line); border-radius: 15px; padding: 10px; margin-bottom: 8px; cursor: pointer; transition: 0.18s ease; box-shadow: 0 9px 22px rgba(15,23,42,0.04); position: relative; }
     .item-card:hover { transform: translateY(-2px); border-color: rgba(215,25,32,0.35); box-shadow: 0 16px 35px rgba(15,23,42,0.10); }
     .item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 7px; }
     .item-id { font-weight: 950; font-size: 13px; letter-spacing: -0.02em; }
     .supplier { color: var(--muted); font-size: 11px; margin-top: 2px; }
     .card-row { display: flex; justify-content: space-between; gap: 9px; margin-top: 7px; font-size: 11px; color: var(--ink-2); }
-    .card-row span:first-child { color: var(--muted); }
-    .card-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card-row span:first-child { color: var(--muted); } .card-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .badge { border-radius: 999px; padding: 4px 7px; font-size: 10.5px; font-weight: 950; border: 1px solid transparent; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
     .badge.green { background: var(--green-soft); color: #047857; border-color: #bbf7d0; }
     .badge.amber { background: var(--amber-soft); color: #92400e; border-color: #fde68a; }
@@ -297,19 +84,12 @@
     .warehouse-map { height: 100%; background: linear-gradient(135deg, #f8fafc, #eef2f7); border: 1px solid var(--line); border-radius: 20px; padding: 11px; display: grid; gap: 9px; }
     .zone { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; transition: 0.18s ease; cursor: pointer; min-height: 58px; }
     .zone:hover { transform: translateY(-1px); box-shadow: 0 12px 24px rgba(15,23,42,0.08); }
-    .zone strong { display: block; font-size: 13px; }
-    .zone small { color: var(--muted); font-size: 11px; }
+    .zone strong { display: block; font-size: 13px; } .zone small { color: var(--muted); font-size: 11px; }
     .zone .count { font-size: 24px; font-weight: 950; letter-spacing: -0.05em; }
-    .zone.red { border-left: 5px solid var(--elx-red); }
-    .zone.green { border-left: 5px solid var(--green); }
-    .zone.amber { border-left: 5px solid var(--amber); }
-    .zone.blue { border-left: 5px solid var(--blue); }
-    .zone.dark { border-left: 5px solid var(--ink); }
-    .zone.purple { border-left: 5px solid var(--purple); }
+    .zone.red { border-left: 5px solid var(--elx-red); } .zone.green { border-left: 5px solid var(--green); } .zone.amber { border-left: 5px solid var(--amber); } .zone.blue { border-left: 5px solid var(--blue); } .zone.dark { border-left: 5px solid var(--ink); } .zone.purple { border-left: 5px solid var(--purple); }
     .scan-card { background: var(--ink); color: white; border-radius: 22px; padding: 14px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; overflow: hidden; position: relative; }
     .scan-card::after { content: ""; position: absolute; right: -44px; bottom: -44px; width: 150px; height: 150px; border-radius: 999px; background: var(--elx-red); opacity: 0.22; }
-    .scan-card h4 { margin: 0; font-size: 14px; }
-    .scan-card p { margin: 4px 0 0; color: #cbd5e1; font-size: 11px; line-height: 1.35; max-width: 380px; }
+    .scan-card h4 { margin: 0; font-size: 14px; } .scan-card p { margin: 4px 0 0; color: #cbd5e1; font-size: 11px; line-height: 1.35; max-width: 380px; }
     .scan-card .btn { position: relative; z-index: 1; }
     .tab-grid { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(270px, 0.35fr); gap: 10px; min-height: 0; }
     .tab-grid.single { grid-template-columns: 1fr; }
@@ -324,8 +104,7 @@
     .field input, .field select { width: 100%; border: 1px solid var(--line); border-radius: 13px; padding: 10px 11px; font-size: 12px; color: var(--ink); background: white; outline: none; transition: 0.16s ease; }
     .field input:focus, .field select:focus { border-color: var(--elx-red); box-shadow: 0 0 0 4px rgba(215,25,32,0.08); }
     .upload-inline { height: 100%; min-height: 320px; border: 2px dashed #cbd5e1; border-radius: 20px; background: white; display: grid; place-items: center; text-align: center; padding: 18px; }
-    .upload-inline h4 { margin: 0; font-size: 16px; }
-    .upload-inline p { margin: 8px 0 13px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .upload-inline h4 { margin: 0; font-size: 16px; } .upload-inline p { margin: 8px 0 13px; color: var(--muted); font-size: 12px; line-height: 1.45; }
     .camera-icon { width: 70px; height: 70px; border-radius: 22px; background: var(--soft); display: grid; place-items: center; margin: 0 auto 12px; font-size: 30px; box-shadow: 0 18px 38px rgba(15,23,42,0.08); }
     .table-wrap { height: 100%; overflow: hidden; }
     table { width: 100%; border-collapse: collapse; }
@@ -334,9 +113,7 @@
     tr:hover td { background: #fff7f7; }
     .map-large { height: 100%; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 10px; background: var(--soft); }
     .bay { border: 1px solid var(--line); background: white; border-radius: 18px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 0; }
-    .bay h4 { margin: 0; font-size: 15px; }
-    .bay .big { font-size: 38px; font-weight: 950; letter-spacing: -0.05em; }
-    .bay small { color: var(--muted); }
+    .bay h4 { margin: 0; font-size: 15px; } .bay .big { font-size: 38px; font-weight: 950; letter-spacing: -0.05em; } .bay small { color: var(--muted); }
     .search-row { display: flex; gap: 9px; padding: 10px; border-bottom: 1px solid var(--line); }
     .search-row input { flex: 1; border: 1px solid var(--line); border-radius: 14px; padding: 11px 13px; outline: none; }
     .detail-box { background: var(--soft); border: 1px solid var(--line); border-radius: 18px; padding: 13px; min-height: 0; }
@@ -350,277 +127,66 @@
     .close { width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--line); background: var(--soft); cursor: pointer; font-weight: 900; }
     .modal-body { padding: 18px 20px 20px; display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 16px; min-height: 0; }
     .upload-box { border: 2px dashed #cbd5e1; border-radius: 22px; background: var(--soft); min-height: 350px; display: grid; place-items: center; text-align: center; padding: 22px; }
-    .upload-box h4 { margin: 0; font-size: 17px; }
-    .upload-box p { margin: 8px 0 16px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .upload-box h4 { margin: 0; font-size: 17px; } .upload-box p { margin: 8px 0 16px; color: var(--muted); font-size: 13px; line-height: 1.5; }
     .confidence { margin-top: 12px; display: grid; gap: 8px; padding: 13px; background: var(--soft); border: 1px solid var(--line); border-radius: 16px; }
     .meter { height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
     .meter span { display: block; height: 100%; width: 92%; background: linear-gradient(90deg, var(--green), #86efac); border-radius: 999px; }
     .match-box { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px; border-radius: 16px; background: var(--green-soft); border: 1px solid #bbf7d0; margin-top: 12px; }
-    .match-box strong { color: #047857; }
-    .match-box small { display: block; margin-top: 3px; color: #047857; opacity: 0.85; }
+    .match-box strong { color: #047857; } .match-box small { display: block; margin-top: 3px; color: #047857; opacity: 0.85; }
     .modal-actions { padding: 15px 20px 18px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 9px; flex-wrap: wrap; }
     .toast { position: fixed; right: 22px; bottom: 22px; background: var(--ink); color: white; padding: 14px 16px; border-radius: 16px; font-weight: 850; font-size: 13px; box-shadow: 0 20px 50px rgba(2,6,23,0.3); display: none; z-index: 50; }
     .toast.show { display: block; animation: pop 0.2s ease; }
     @keyframes pop { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    @media (max-width: 1450px) {
-      .app { grid-template-columns: 232px 1fr; }
-      .kpi .value { font-size: 24px; }
-      .board { grid-template-columns: repeat(5, minmax(136px, 1fr)); }
-      .item-card { padding: 9px; }
-      .card-row { font-size: 10.5px; }
-    }
-    @media (max-width: 1080px) {
-      body { overflow: auto; }
-      .app { display: block; height: auto; min-height: 100vh; }
-      .sidebar { height: auto; }
-      .nav { grid-template-columns: repeat(3, 1fr); }
-      main { height: auto; min-height: 100vh; overflow: visible; grid-template-rows: auto auto auto auto; }
-      .dash-grid, .tab-grid { grid-template-columns: 1fr; }
-      .kpi-grid { grid-template-columns: repeat(3, 1fr); }
-      .board { overflow-x: auto; grid-template-columns: repeat(5, 220px); }
-      .modal-body, .split-grid { grid-template-columns: 1fr; }
-      .map-large { grid-template-columns: repeat(2, 1fr); }
-    }
-    .receipt-modal-body{
-      display:grid;
-      grid-template-columns: .9fr 1.1fr;
-      gap:18px;
-      padding:18px 20px 20px;
-      overflow:auto;
-      min-height:0;
-    }
-    .receipt-success{
-      border:1px solid #bbf7d0;
-      background:var(--green-soft);
-      border-radius:20px;
-      padding:18px;
-    }
-    .receipt-success h4{margin:0 0 6px;color:#047857;font-size:18px}
-    .receipt-success p{margin:0;color:#047857;font-size:12px;line-height:1.5}
-    .receipt-ref{
-      margin-top:14px;
-      background:white;
-      border:1px solid #bbf7d0;
-      border-radius:16px;
-      padding:14px;
-    }
-    .receipt-ref small{color:var(--muted);font-size:11px}
-    .receipt-ref strong{display:block;font-size:21px;margin-top:4px;letter-spacing:-.03em}
-    .qr-panel{
-      border:1px solid var(--line);
-      border-radius:20px;
-      background:white;
-      padding:18px;
-      text-align:center;
-    }
-    #receiptQr{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      min-height:220px;
-    }
-    #receiptQr img,#receiptQr canvas{max-width:220px!important;max-height:220px!important}
-    .receipt-url{
-      margin-top:10px;
-      font-size:11px;
-      color:var(--muted);
-      word-break:break-all;
-      background:var(--soft);
-      border:1px solid var(--line);
-      border-radius:12px;
-      padding:9px 10px;
-    }
-    .receipt-table{
-      width:100%;
-      border-collapse:collapse;
-      margin-top:14px;
-    }
-    .receipt-table th,.receipt-table td{
-      padding:9px 10px;
-      font-size:11px;
-      border-bottom:1px solid var(--line);
-      text-align:left;
-    }
-    .receipt-table th{
-      background:var(--soft);
-      color:var(--muted);
-      text-transform:uppercase;
-      letter-spacing:.05em;
-      font-size:10px;
-    }
-    @media (max-width:1080px){
-      .receipt-modal-body{grid-template-columns:1fr}
-    }
+    @media (max-width: 1450px) { .app { grid-template-columns: 232px 1fr; } .kpi .value { font-size: 24px; } .board { grid-template-columns: repeat(5, minmax(136px, 1fr)); } .item-card { padding: 9px; } .card-row { font-size: 10.5px; } }
+    @media (max-width: 1080px) { body { overflow: auto; } .app { display: block; height: auto; min-height: 100vh; } .sidebar { height: auto; } .nav { grid-template-columns: repeat(3, 1fr); } main { height: auto; min-height: 100vh; overflow: visible; grid-template-rows: auto auto auto auto; } .dash-grid, .tab-grid { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(3, 1fr); } .board { overflow-x: auto; grid-template-columns: repeat(5, 220px); } .modal-body, .split-grid { grid-template-columns: 1fr; } .map-large { grid-template-columns: repeat(2, 1fr); } }
+    .receipt-modal-body { display: grid; grid-template-columns: .9fr 1.1fr; gap: 18px; padding: 18px 20px 20px; overflow: auto; min-height: 0; }
+    .receipt-success { border: 1px solid #bbf7d0; background: var(--green-soft); border-radius: 20px; padding: 18px; }
+    .receipt-success h4 { margin: 0 0 6px; color: #047857; font-size: 18px; } .receipt-success p { margin: 0; color: #047857; font-size: 12px; line-height: 1.5; }
+    .receipt-ref { margin-top: 14px; background: white; border: 1px solid #bbf7d0; border-radius: 16px; padding: 14px; }
+    .receipt-ref small { color: var(--muted); font-size: 11px; } .receipt-ref strong { display: block; font-size: 21px; margin-top: 4px; letter-spacing: -0.03em; }
+    .qr-panel { border: 1px solid var(--line); border-radius: 20px; background: white; padding: 18px; text-align: center; }
+    #receiptQr { display: flex; align-items: center; justify-content: center; min-height: 220px; }
+    #receiptQr img, #receiptQr canvas { max-width: 220px !important; max-height: 220px !important; }
+    .receipt-url { margin-top: 10px; font-size: 11px; color: var(--muted); word-break: break-all; background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 9px 10px; }
+    .receipt-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    .receipt-table th, .receipt-table td { padding: 9px 10px; font-size: 11px; border-bottom: 1px solid var(--line); text-align: left; }
+    .receipt-table th { background: var(--soft); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; }
+    @media (max-width: 1080px) { .receipt-modal-body { grid-template-columns: 1fr; } }
     /* Keep the user's provided design language; only extend for ELX freight workflow. */
-    main {
-      grid-template-rows: var(--header-h) auto 1fr !important;
-    }
-    #kpiSection.hidden {
-      display: none !important;
-    }
-    .dash-grid {
-      grid-template-columns: 1fr !important;
-    }
-    .board {
-      grid-template-columns: repeat(5, minmax(180px, 1fr));
-      height: 100%;
-    }
-    .lane-cards {
-      overflow: auto;
-      min-height: 0;
-      padding-right: 2px;
-    }
-    .lane-cards::-webkit-scrollbar,
-    .receive-form-wrap::-webkit-scrollbar,
-    .table-wrap::-webkit-scrollbar,
-    .scroll-area::-webkit-scrollbar,
-    .timeline-scroll::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
-    }
-    .lane-cards::-webkit-scrollbar-thumb,
-    .receive-form-wrap::-webkit-scrollbar-thumb,
-    .table-wrap::-webkit-scrollbar-thumb,
-    .scroll-area::-webkit-scrollbar-thumb,
-    .timeline-scroll::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 999px;
-    }
-    .top-actions {
-      display: flex;
-      gap: 9px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-    .top-actions .btn {
-      min-width: 122px;
-    }
+    main { grid-template-rows: var(--header-h) auto 1fr !important; }
+    #kpiSection.hidden { display: none !important; }
+    .dash-grid { grid-template-columns: 1fr !important; }
+    .board { grid-template-columns: repeat(5, minmax(180px, 1fr)); height: 100%; }
+    .lane-cards { overflow: auto; min-height: 0; padding-right: 2px; }
+    .lane-cards::-webkit-scrollbar, .receive-form-wrap::-webkit-scrollbar, .table-wrap::-webkit-scrollbar, .scroll-area::-webkit-scrollbar, .timeline-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+    .lane-cards::-webkit-scrollbar-thumb, .receive-form-wrap::-webkit-scrollbar-thumb, .table-wrap::-webkit-scrollbar-thumb, .scroll-area::-webkit-scrollbar-thumb, .timeline-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    .top-actions { display: flex; gap: 9px; flex-wrap: wrap; justify-content: flex-end; }
+    .top-actions .btn { min-width: 122px; }
     .req { color: var(--elx-red); }
-    textarea {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 13px;
-      padding: 10px 11px;
-      font-size: 12px;
-      color: var(--ink);
-      background: white;
-      outline: none;
-      transition: 0.16s ease;
-      resize: vertical;
-      min-height: 72px;
-      font-family: inherit;
-    }
-    textarea:focus {
-      border-color: var(--elx-red);
-      box-shadow: 0 0 0 4px rgba(215,25,32,0.08);
-    }
-    .receive-form-wrap {
-      overflow: auto;
-      min-height: 0;
-      padding: 10px;
-    }
-    .receipt-grid {
-      display: grid;
-      grid-template-columns: repeat(3,1fr);
-      gap: 9px;
-      margin-top: 12px;
-    }
-    .receipt-mini {
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 11px;
-    }
-    .receipt-mini small {
-      color: var(--muted);
-      font-size: 11px;
-    }
-    .receipt-mini strong {
-      display: block;
-      margin-top: 4px;
-      font-size: 20px;
-    }
-    .items-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0 7px;
-      margin-top: 6px;
-    }
-    .items-table td {
-      border: 0;
-      padding: 0 5px 0 0;
-      vertical-align: top;
-    }
-    .items-table input,
-    .items-table select {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 13px;
-      padding: 10px 11px;
-      font-size: 12px;
-      color: var(--ink);
-      background: white;
-      outline: none;
-    }
-    .remove-line {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: white;
-      font-weight: 900;
-      cursor: pointer;
-      margin-top: 26px;
-    }
-    .status-select {
-      min-width: 170px;
-    }
-    .timeline-scroll {
-      overflow: auto;
-      min-height: 0;
-      padding: 10px;
-    }
-    .staff-line {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: center;
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 10px 12px;
-    }
-    .admin-list {
-      display: grid;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .detail-box-lite {
-      background: var(--soft);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 13px;
-    }
-    .kpi-grid {
-      min-height: var(--kpi-h);
-    }
-    @media (max-width: 1080px) {
-      .receipt-grid {
-        grid-template-columns: repeat(3,1fr);
-      }
-    }
+    textarea { width: 100%; border: 1px solid var(--line); border-radius: 13px; padding: 10px 11px; font-size: 12px; color: var(--ink); background: white; outline: none; transition: 0.16s ease; resize: vertical; min-height: 72px; font-family: inherit; }
+    textarea:focus { border-color: var(--elx-red); box-shadow: 0 0 0 4px rgba(215,25,32,0.08); }
+    .receive-form-wrap { overflow: auto; min-height: 0; padding: 10px; }
+    .receipt-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; margin-top: 12px; }
+    .receipt-mini { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 11px; }
+    .receipt-mini small { color: var(--muted); font-size: 11px; } .receipt-mini strong { display: block; margin-top: 4px; font-size: 20px; }
+    .items-table { width: 100%; border-collapse: separate; border-spacing: 0 7px; margin-top: 6px; }
+    .items-table td { border: 0; padding: 0 5px 0 0; vertical-align: top; }
+    .items-table input, .items-table select { width: 100%; border: 1px solid var(--line); border-radius: 13px; padding: 10px 11px; font-size: 12px; color: var(--ink); background: white; outline: none; }
+    .remove-line { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: white; font-weight: 900; cursor: pointer; margin-top: 26px; }
+    .status-select { min-width: 170px; }
+    .timeline-scroll { overflow: auto; min-height: 0; padding: 10px; }
+    .staff-line { display: flex; justify-content: space-between; gap: 10px; align-items: center; background: white; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+    .admin-list { display: grid; gap: 8px; margin-top: 10px; }
+    .detail-box-lite { background: var(--soft); border: 1px solid var(--line); border-radius: 18px; padding: 13px; }
+    .kpi-grid { min-height: var(--kpi-h); }
+    @media (max-width: 1080px) { .receipt-grid { grid-template-columns: repeat(3,1fr); } }
   </style>
 </head>
 <body>
+  <!-- ========== HTML STRUCTURE (unchanged) ========== -->
   <div class="app">
     <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">ELX</div>
-        <div>
-          <h1>Freight Control</h1>
-          <p>Energy LogistiX · BHP Freight</p>
-        </div>
-      </div>
+      <div class="brand"><div class="brand-mark">ELX</div><div><h1>Freight Control</h1><p>Energy LogistiX · BHP Freight</p></div></div>
       <nav class="nav" id="nav">
         <div class="nav-item active" data-view="dashboard"><span class="nav-icon">▦</span>Dashboard</div>
         <div class="nav-item" data-view="receive"><span class="nav-icon">＋</span>Goods Received</div>
@@ -630,46 +196,25 @@
         <div class="nav-item" data-view="reports"><span class="nav-icon">▥</span>Reports</div>
         <div class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Admin / Settings</div>
       </nav>
-      <div class="sidebar-bottom">
-        <div class="role-card">
-          <div class="name">ELX Warehouse Team</div>
-          <div class="meta">Largs North Depot · BHP Freight</div>
-        </div>
-      </div>
+      <div class="sidebar-bottom"><div class="role-card"><div class="name">ELX Warehouse Team</div><div class="meta">Largs North Depot · BHP Freight</div></div></div>
     </aside>
-
     <main>
       <section class="header">
-        <div>
-          <div class="eyebrow">● Live freight lifecycle</div>
-          <h2 id="pageTitle">ELX Freight Control</h2>
-          <p id="pageSubtitle">BHP freight visibility from supplier receipt to site delivery and invoice readiness.</p>
-        </div>
+        <div><div class="eyebrow">● Live freight lifecycle</div><h2 id="pageTitle">ELX Freight Control</h2><p id="pageSubtitle">BHP freight visibility from supplier receipt to site delivery and invoice readiness.</p></div>
       </section>
-
       <section class="kpi-grid" id="kpiSection"></section>
-
       <section class="view-stage">
         <!-- Dashboard -->
         <div class="view active" id="view-dashboard">
           <div class="panel fill">
-            <div class="panel-head">
-              <div>
-                <h3>Freight Lifecycle Board</h3>
-                <p>Goods Received → Location Assigned → SAP Validated → Ready for Dispatch → Dispatched.</p>
-              </div>
-              <span class="small-pill">Largs North Depot</span>
-            </div>
+            <div class="panel-head"><div><h3>Freight Lifecycle Board</h3><p>Goods Received → Location Assigned → SAP Validated → Ready for Dispatch → Dispatched.</p></div><span class="small-pill">Largs North Depot</span></div>
             <div class="board" id="workloadBoard"></div>
           </div>
         </div>
-
         <!-- Receive -->
         <div class="view" id="view-receive">
           <div class="panel fill">
-            <div class="panel-head">
-              <div><h3>Goods Received</h3><p>Supplier driver handover · manual entry or OCR-assisted label capture.</p></div>
-            </div>
+            <div class="panel-head"><div><h3>Goods Received</h3><p>Supplier driver handover · manual entry or OCR-assisted label capture.</p></div></div>
             <div class="split-grid">
               <div class="upload-inline">
                 <div>
@@ -697,101 +242,52 @@
                 <table class="items-table"><tbody id="itemsBody"></tbody></table>
                 <button class="btn btn-ghost" id="addItemBtn">+ Add Freight Item</button>
                 <div style="margin-top:14px;font-weight:900;font-size:12px;">Receiving Details</div>
-                <div class="field-grid" style="margin-top:9px;">
-                  <div class="field"><label>Received By <span class="req">*</span></label><select id="receivedBy"></select></div>
-                </div>
+                <div class="field-grid" style="margin-top:9px;"><div class="field"><label>Received By <span class="req">*</span></label><select id="receivedBy"></select></div></div>
                 <div class="field" style="margin-top:9px;"><label>Notes</label><textarea id="notes" placeholder="Damage, packaging condition, missing information, special handling, etc."></textarea></div>
                 <div style="display:flex;justify-content:space-between;gap:9px;margin-top:13px;align-items:center;flex-wrap:wrap;">
                   <span class="small-pill" id="timestampText">Timestamp recorded automatically</span>
-                  <div style="display:flex;gap:9px;flex-wrap:wrap;">
-                    <button class="btn btn-light" id="clearReceiveBtn">Clear</button>
-                    <button class="btn btn-green" id="confirmReceiveBtn">Confirm Goods Received</button>
-                  </div>
+                  <div style="display:flex;gap:9px;flex-wrap:wrap;"><button class="btn btn-light" id="clearReceiveBtn">Clear</button><button class="btn btn-green" id="confirmReceiveBtn">Confirm Goods Received</button></div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
         <!-- Tracking -->
         <div class="view" id="view-tracking">
           <div class="panel fill">
-            <div class="panel-head">
-              <div><h3>Freight Tracking</h3><p>Search any ELX GR and move freight through the operational lifecycle.</p></div>
-            </div>
+            <div class="panel-head"><div><h3>Freight Tracking</h3><p>Search any ELX GR and move freight through the operational lifecycle.</p></div></div>
             <div style="display:grid;grid-template-rows:auto 1fr;min-height:0;">
-              <div class="search-row">
-                <input id="searchInput" placeholder="Search ELX GR, PO, supplier, connote, reference or site">
-                <select id="statusFilter" class="status-select"></select>
-                <span class="small-pill" id="locationFilterPill" style="display:none;"></span>
-                <button class="btn btn-light" id="clearLocationFilterBtn" style="display:none;">Clear Cage Filter</button>
-              </div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>ELX GR</th><th>Supplier</th><th>PO</th><th>Destination</th><th>Qty</th><th>Location</th><th>Status</th><th>Updated</th><th></th></tr></thead>
-                  <tbody id="trackingBody"></tbody>
-                </table>
-              </div>
+              <div class="search-row"><input id="searchInput" placeholder="Search ELX GR, PO, supplier, connote, reference or site"><select id="statusFilter" class="status-select"></select><span class="small-pill" id="locationFilterPill" style="display:none;"></span><button class="btn btn-light" id="clearLocationFilterBtn" style="display:none;">Clear Cage Filter</button></div>
+              <div class="table-wrap"><table><thead><tr><th>ELX GR</th><th>Supplier</th><th>PO</th><th>Destination</th><th>Qty</th><th>Location</th><th>Status</th><th>Updated</th><th></th></tr></thead><tbody id="trackingBody"></tbody></table></div>
             </div>
           </div>
         </div>
-
         <!-- Locations -->
         <div class="view" id="view-locations">
           <div class="panel fill">
-            <div class="panel-head">
-              <div><h3>Locations / Cages</h3><p>Current freight allocation by BHP cage, exception area and dispatch zone.</p></div>
-            </div>
+            <div class="panel-head"><div><h3>Locations / Cages</h3><p>Current freight allocation by BHP cage, exception area and dispatch zone.</p></div></div>
             <div class="map-large" id="largeWarehouseMap"></div>
           </div>
         </div>
-
         <!-- Timeline -->
         <div class="view" id="view-timeline">
           <div class="tab-grid">
-            <div class="panel fill">
-              <div class="panel-head"><div><h3>Freight Records</h3><p>Select a GR to view the full audit trail.</p></div></div>
-              <div class="scroll-area"><div class="card-list" id="timelineRecordList"></div></div>
-            </div>
-            <div class="panel fill">
-              <div class="panel-head"><div><h3>Audit Timeline</h3><p>Every major action, user, timestamp, location and status.</p></div></div>
-              <div class="timeline-scroll"><div id="timelineSummary"></div><div class="timeline-list" id="itemTimeline" style="margin-top:10px;"></div></div>
-            </div>
+            <div class="panel fill"><div class="panel-head"><div><h3>Freight Records</h3><p>Select a GR to view the full audit trail.</p></div></div><div class="scroll-area"><div class="card-list" id="timelineRecordList"></div></div></div>
+            <div class="panel fill"><div class="panel-head"><div><h3>Audit Timeline</h3><p>Every major action, user, timestamp, location and status.</p></div></div><div class="timeline-scroll"><div id="timelineSummary"></div><div class="timeline-list" id="itemTimeline" style="margin-top:10px;"></div></div></div>
           </div>
         </div>
-
         <!-- Reports -->
         <div class="view" id="view-reports">
           <div class="panel fill">
-            <div class="panel-head">
-              <div><h3>Reports & Invoice Readiness</h3><p>Live operational summary from the freight lifecycle dataset.</p></div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Site</th><th>GR Records</th><th>Total Qty</th><th>Total Weight</th><th>Dispatched+</th><th>Ready to Invoice</th></tr></thead>
-                <tbody id="reportsBody"></tbody>
-              </table>
-            </div>
+            <div class="panel-head"><div><h3>Reports & Invoice Readiness</h3><p>Live operational summary from the freight lifecycle dataset.</p></div></div>
+            <div class="table-wrap"><table><thead><tr><th>Site</th><th>GR Records</th><th>Total Qty</th><th>Total Weight</th><th>Dispatched+</th><th>Ready to Invoice</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
           </div>
         </div>
-
         <!-- Settings -->
         <div class="view" id="view-settings">
           <div class="tab-grid">
-            <div class="panel fill">
-              <div class="panel-head"><div><h3>ELX Staff</h3><p>Controls Received By and Updated By dropdowns.</p></div></div>
-              <div class="scroll-area">
-                <div class="field"><label>Add ELX Staff Member</label><div style="display:flex;gap:9px;"><input id="newStaff" placeholder="Staff name"><button class="btn btn-primary" id="addStaffBtn">Add</button></div></div>
-                <div class="admin-list" id="staffList"></div>
-              </div>
-            </div>
-            <div class="panel fill">
-              <div class="panel-head"><div><h3>Receiving Locations</h3><p>Manage BHP cages, holding areas and dispatch zones.</p></div></div>
-              <div class="scroll-area">
-                <div class="field"><label>Add Cage / Zone</label><div style="display:flex;gap:9px;"><input id="newLocation" placeholder="New location"><button class="btn btn-primary" id="addLocationBtn">Add</button></div></div>
-                <div class="admin-list" id="locationList"></div>
-              </div>
-            </div>
+            <div class="panel fill"><div class="panel-head"><div><h3>ELX Staff</h3><p>Controls Received By and Updated By dropdowns.</p></div></div><div class="scroll-area"><div class="field"><label>Add ELX Staff Member</label><div style="display:flex;gap:9px;"><input id="newStaff" placeholder="Staff name"><button class="btn btn-primary" id="addStaffBtn">Add</button></div></div><div class="admin-list" id="staffList"></div></div></div>
+            <div class="panel fill"><div class="panel-head"><div><h3>Receiving Locations</h3><p>Manage BHP cages, holding areas and dispatch zones.</p></div></div><div class="scroll-area"><div class="field"><label>Add Cage / Zone</label><div style="display:flex;gap:9px;"><input id="newLocation" placeholder="New location"><button class="btn btn-primary" id="addLocationBtn">Add</button></div></div><div class="admin-list" id="locationList"></div></div></div>
           </div>
         </div>
       </section>
@@ -801,10 +297,7 @@
   <!-- Modals -->
   <div class="modal-backdrop" id="receiveModal">
     <div class="modal">
-      <div class="modal-head">
-        <div><h3>Scan Physical Label</h3><p style="margin:4px 0 0;color:#64748b;font-size:13px;">Take/upload photo → AI OCR extraction → human review → pre-fill Goods Received form.</p></div>
-        <button class="close" id="closeModal">×</button>
-      </div>
+      <div class="modal-head"><div><h3>Scan Physical Label</h3><p style="margin:4px 0 0;color:#64748b;font-size:13px;">Take/upload photo → AI OCR extraction → human review → pre-fill Goods Received form.</p></div><button class="close" id="closeModal">×</button></div>
       <div class="modal-body">
         <div class="upload-box">
           <div>
@@ -813,13 +306,10 @@
             <h4>Take or upload label photo</h4>
             <p>On iPad/tablet use the camera. On PC upload a freight-label image. Use good light and keep the label flat.</p>
             <button class="btn btn-dark" id="chooseImageBtn">Take / Upload Photo</button>
-            <div id="previewWrap" style="display:none;margin-top:12px;">
-              <img id="previewImg" style="max-width:100%;max-height:210px;object-fit:contain;border-radius:14px;border:1px solid var(--line);background:white;">
-            </div>
+            <div id="previewWrap" style="display:none;margin-top:12px;"><img id="previewImg" style="max-width:100%;max-height:210px;object-fit:contain;border-radius:14px;border:1px solid var(--line);background:white;"></div>
           </div>
         </div>
         <div>
-          <!-- OCR fields matching main form -->
           <div class="field-grid">
             <div class="field"><label>Supplier / Sender</label><input id="ocrSupplier" placeholder="Extracted supplier"></div>
             <div class="field"><label>Delivery Site</label><select id="ocrSite"><option value="">Select extracted site</option><option>BHP Olympic Dam</option><option>BHP Carrapateena</option><option>BHP Prominent Hill</option><option>Other / Unknown</option></select></div>
@@ -828,85 +318,36 @@
             <div class="field"><label>Other Reference(s)</label><input id="ocrReference" placeholder="Extracted reference"></div>
             <div class="field"><label>Connote / Consignment</label><input id="ocrConnote" placeholder="Extracted connote"></div>
           </div>
-
-          <!-- Item row with Type, Quantity, Weight -->
           <div style="margin-top:12px;font-weight:900;font-size:12px;">Freight Item (OCR will fill Quantity)</div>
           <div class="field-grid" style="grid-template-columns: 1fr 1fr 1fr;">
             <div class="field"><label>Item Type</label><select id="ocrItemType"><option value="">Select type</option><option>Carton</option><option>Satchel</option><option>Pallet</option><option>Crate</option><option>Basket</option><option>Parcel</option><option>Stillage</option><option>IBC</option><option>Loose Freight</option><option>Other</option></select></div>
             <div class="field"><label>Quantity</label><input id="ocrQty" placeholder="Extracted quantity"></div>
             <div class="field"><label>Weight (kg)</label><input id="ocrWeight" placeholder="Extracted weight"></div>
           </div>
-
           <div class="confidence">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;"><strong>OCR Status</strong><span class="badge grey" id="ocrBadge">Waiting for image</span></div>
             <div class="meter"><span id="meterBar" style="width:0%"></span></div>
             <small id="ocrProgress" style="color:#64748b;">Azure AI OCR – human review required before confirmation.</small>
           </div>
-          <div class="detail-box" style="margin-top:12px;">
-            <strong style="font-size:12px;">Raw OCR text</strong>
-            <div id="rawOcr" style="margin-top:7px;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:11px;color:#475569;max-height:120px;overflow:auto;">-</div>
-          </div>
+          <div class="detail-box" style="margin-top:12px;"><strong style="font-size:12px;">Raw OCR text</strong><div id="rawOcr" style="margin-top:7px;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:11px;color:#475569;max-height:120px;overflow:auto;">-</div></div>
         </div>
       </div>
-      <div class="modal-actions">
-        <button class="btn btn-light" id="cancelOcrBtn">Cancel</button>
-        <button class="btn btn-dark" id="runOcrBtn" disabled>Extract Fields</button>
-        <button class="btn btn-green" id="useOcrBtn">Use Extracted Fields</button>
-      </div>
+      <div class="modal-actions"><button class="btn btn-light" id="cancelOcrBtn">Cancel</button><button class="btn btn-dark" id="runOcrBtn" disabled>Extract Fields</button><button class="btn btn-green" id="useOcrBtn">Use Extracted Fields</button></div>
     </div>
   </div>
 
-  <div class="modal-backdrop" id="moveModal">
-    <div class="modal" style="width:min(720px,100%);">
-      <div class="modal-head">
-        <div><h3>Update Freight Lifecycle</h3><p id="moveTitle" style="margin:4px 0 0;color:#64748b;font-size:13px;"></p></div>
-        <button class="close" id="closeMoveModal">×</button>
-      </div>
-      <div class="modal-body" style="grid-template-columns:1fr;">
-        <div class="field-grid">
-          <div class="field"><label>Workflow Status</label><select id="moveStatus"></select></div>
-          <div class="field"><label>Location / Cage</label><select id="moveLocation"></select></div>
-          <div class="field"><label>Updated By</label><select id="moveUser"></select></div>
-          <div class="field"><label>Movement Note</label><input id="moveNote" placeholder="e.g. SAP validated by warehouse staff"></div>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-light" id="cancelMoveBtn">Cancel</button>
-        <button class="btn btn-primary" id="saveMoveBtn">Save Update</button>
-      </div>
-    </div>
-  </div>
+  <div class="modal-backdrop" id="moveModal"><div class="modal" style="width:min(720px,100%);"><div class="modal-head"><div><h3>Update Freight Lifecycle</h3><p id="moveTitle" style="margin:4px 0 0;color:#64748b;font-size:13px;"></p></div><button class="close" id="closeMoveModal">×</button></div><div class="modal-body" style="grid-template-columns:1fr;"><div class="field-grid"><div class="field"><label>Workflow Status</label><select id="moveStatus"></select></div><div class="field"><label>Location / Cage</label><select id="moveLocation"></select></div><div class="field"><label>Updated By</label><select id="moveUser"></select></div><div class="field"><label>Movement Note</label><input id="moveNote" placeholder="e.g. SAP validated by warehouse staff"></div></div></div><div class="modal-actions"><button class="btn btn-light" id="cancelMoveBtn">Cancel</button><button class="btn btn-primary" id="saveMoveBtn">Save Update</button></div></div></div>
 
   <div class="modal-backdrop" id="receiptModal">
     <div class="modal" style="width:min(920px,100%);">
-      <div class="modal-head">
-        <div>
-          <h3>Goods Received Receipt</h3>
-          <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Supplier POD · QR receipt generated after confirmation.</p>
-        </div>
-        <button class="close" id="closeReceiptModal">×</button>
-      </div>
+      <div class="modal-head"><div><h3>Goods Received Receipt</h3><p style="margin:4px 0 0;color:#64748b;font-size:13px;">Supplier POD · QR receipt generated after confirmation.</p></div><button class="close" id="closeReceiptModal">×</button></div>
       <div class="receipt-modal-body">
         <div>
-          <div class="receipt-success">
-            <h4>✓ Goods Received Confirmed</h4>
-            <p>Energy LogistiX has received the freight at 7 Creswell Rd, Largs North SA 5016.</p>
-          </div>
-          <div class="receipt-ref">
-            <small>ELX Goods Received Reference</small>
-            <strong id="receiptGrNumber">-</strong>
-          </div>
+          <div class="receipt-success"><h4>✓ Goods Received Confirmed</h4><p>Energy LogistiX has received the freight at 7 Creswell Rd, Largs North SA 5016.</p></div>
+          <div class="receipt-ref"><small>ELX Goods Received Reference</small><strong id="receiptGrNumber">-</strong></div>
           <div class="detail-box" style="margin-top:12px;">
-            <div class="field-grid">
-              <div class="field"><label>Supplier</label><input id="receiptSupplier" readonly></div>
-              <div class="field"><label>Destination</label><input id="receiptSite" readonly></div>
-              <div class="field"><label>Received By</label><input id="receiptReceivedBy" readonly></div>
-              <div class="field"><label>Received At</label><input id="receiptDateTime" readonly></div>
-            </div>
-            <table class="receipt-table">
-              <thead><tr><th>Item</th><th>Qty</th><th>Weight</th></tr></thead>
-              <tbody id="receiptItemsBody"></tbody>
-            </table>
+            <div class="field-grid"><div class="field"><label>Supplier</label><input id="receiptSupplier" readonly></div><div class="field"><label>Destination</label><input id="receiptSite" readonly></div><div class="field"><label>Received By</label><input id="receiptReceivedBy" readonly></div><div class="field"><label>Received At</label><input id="receiptDateTime" readonly></div></div>
+            <table class="receipt-table"><thead><tr><th>Item</th><th>Qty</th><th>Weight</th></tr></thead><tbody id="receiptItemsBody"></tbody></table>
           </div>
         </div>
         <div class="qr-panel">
@@ -914,41 +355,31 @@
           <p style="margin:6px 0 12px;color:#64748b;font-size:12px;">Driver scans this QR on their personal phone to open the read-only receipt page.</p>
           <div id="receiptQr"></div>
           <div class="receipt-url" id="receiptUrlText">-</div>
-          <div style="display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:14px;">
-            <button class="btn btn-dark" id="openReceiptBtn">Open Receipt Page</button>
-            <button class="btn btn-light" id="printReceiptBtn">Print / Save PDF</button>
-          </div>
+          <div style="display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:14px;"><button class="btn btn-dark" id="openReceiptBtn">Open Receipt Page</button><button class="btn btn-light" id="printReceiptBtn">Print / Save PDF</button></div>
         </div>
       </div>
-      <div class="modal-actions">
-        <button class="btn btn-primary" id="doneReceiptBtn">Done</button>
-      </div>
+      <div class="modal-actions"><button class="btn btn-primary" id="doneReceiptBtn">Done</button></div>
     </div>
   </div>
 
   <div class="toast" id="toast">Saved</div>
 
   <script>
-    // --- CONFIGURATION ---
+    // ========== CONFIGURATION ==========
     const API_BASE = 'https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net/api';
 
-    // --- GLOBAL STATE ---
+    // ========== GLOBAL STATE ==========
     const STATUS = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched","Delivered","Ready to Invoice"];
     const DEFAULT_STAFF = ["Rahul Tamang","Staff Member 2","Staff Member 3"];
     const DEFAULT_LOCATIONS = ["BHP Olympic Dam Cage","BHP Carrapateena Cage","BHP Prominent Hill Cage","Quarantine / Exception Area","General Receiving Area","Ready Dispatch Zone","Loaded / Outbound Bay"];
     let selectedId = null;
     let selectedImage = null;
-    let selectedFile = null;       // holds the actual File object
+    let selectedFile = null;
     let activeLocationFilter = "";
 
     function seedRecord(id,supplier,po,site,location,status,qty,weight,user) {
       const t = new Date(Date.now() - Math.floor(Math.random()*6)*3600000).toISOString();
-      return {
-        id,supplier,po,site,location,status,receivedBy:user,reference:"",connote:"",contractor:"",
-        items:[{type:"Pallet",qty,weight}],
-        created:t,updated:t,notes:"",
-        events:[{time:t,event:"Goods Received",user,location,status:"Goods Received",note:"Supplier freight received at Largs North depot"}]
-      };
+      return { id, supplier, po, site, location, status, receivedBy:user, reference:"", connote:"", contractor:"", items:[{type:"Pallet", qty, weight}], created:t, updated:t, notes:"", events:[{time:t, event:"Goods Received", user, location, status:"Goods Received", note:"Supplier freight received at Largs North depot"}] };
     }
 
     const defaultState = {
@@ -974,19 +405,9 @@
     function esc(v) { return String(v ?? "").replace(/[&<>"]/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[s])); }
     function totalQty(r) { return r.items.reduce((a,i)=>a+(Number(i.qty)||0),0); }
     function totalWeight(r) { return r.items.reduce((a,i)=>a+(Number(i.weight)||0),0); }
-    function fmt(v) { return new Date(v).toLocaleString([],{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); }
-    function tone(status) {
-      return {
-        "Goods Received":"blue","Location Assigned":"purple","SAP Validated":"amber","Ready for Dispatch":"green",
-        "Dispatched":"grey","Delivered":"green","Ready to Invoice":"purple"
-      }[status] || "grey";
-    }
-    function showToast(message) {
-      const t=$("toast");
-      t.textContent=message;
-      t.classList.add("show");
-      setTimeout(()=>t.classList.remove("show"),2200);
-    }
+    function fmt(v) { return new Date(v).toLocaleString([],{day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"}); }
+    function tone(status) { return {"Goods Received":"blue","Location Assigned":"purple","SAP Validated":"amber","Ready for Dispatch":"green","Dispatched":"grey","Delivered":"green","Ready to Invoice":"purple"}[status] || "grey"; }
+    function showToast(message) { const t=$("toast"); t.textContent=message; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
 
     const titles = {
       dashboard:["ELX Freight Control","BHP freight visibility from supplier receipt to site delivery and invoice readiness."],
@@ -1009,54 +430,23 @@
 
     function renderKpis() {
       const counts={}; STATUS.forEach(s=>counts[s]=state.records.filter(r=>r.status===s).length);
-      const cards=[
-        ["Goods Received",counts["Goods Received"],"New depot receipts","blue"],
-        ["Location Assigned",counts["Location Assigned"],"Allocated to cage / zone","purple"],
-        ["SAP Validated",counts["SAP Validated"],"SAP processing confirmed","amber"],
-        ["Ready Dispatch",counts["Ready for Dispatch"],"Cleared for outbound","green"],
-        ["Dispatched",counts["Dispatched"],"Left ELX depot","dark"],
-        ["Delivered",counts["Delivered"],"Site delivery completed","green"],
-        ["Ready to Invoice",counts["Ready to Invoice"],"Billing queue","purple"]
-      ];
+      const cards=[ ["Goods Received",counts["Goods Received"],"New depot receipts","blue"], ["Location Assigned",counts["Location Assigned"],"Allocated to cage / zone","purple"], ["SAP Validated",counts["SAP Validated"],"SAP processing confirmed","amber"], ["Ready Dispatch",counts["Ready for Dispatch"],"Cleared for outbound","green"], ["Dispatched",counts["Dispatched"],"Left ELX depot","dark"], ["Delivered",counts["Delivered"],"Site delivery completed","green"], ["Ready to Invoice",counts["Ready to Invoice"],"Billing queue","purple"] ];
       $("kpiSection").innerHTML=cards.map(c=>`<div class="kpi ${c[3]}"><div class="label">${c[0]}</div><div class="value">${c[1]}</div><div class="hint">${c[2]}</div></div>`).join("");
     }
 
     function boardCardHtml(r) {
-      return `<div class="item-card" data-id="${esc(r.id)}">
-        <div class="item-top">
-          <div>
-            <div class="item-id">${esc(r.id)}</div>
-            <div class="supplier">${esc(r.supplier)}</div>
-          </div>
-        </div>
-        <div class="card-row"><span>PO</span><strong>${esc(r.po||"-")}</strong></div>
-        <div class="card-row"><span>Destination</span><strong>${esc(r.site)}</strong></div>
-        <div class="card-row"><span>Qty</span><strong>${totalQty(r)}</strong></div>
-      </div>`;
+      return `<div class="item-card" data-id="${esc(r.id)}"><div class="item-top"><div><div class="item-id">${esc(r.id)}</div><div class="supplier">${esc(r.supplier)}</div></div></div><div class="card-row"><span>PO</span><strong>${esc(r.po||"-")}</strong></div><div class="card-row"><span>Destination</span><strong>${esc(r.site)}</strong></div><div class="card-row"><span>Qty</span><strong>${totalQty(r)}</strong></div></div>`;
     }
 
     function renderBoard() {
       const lanes=["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
-      $("workloadBoard").innerHTML=lanes.map(s=>{
-        const rows=state.records.filter(r=>r.status===s);
-        return `<div class="lane"><div class="lane-head"><div class="lane-title">${s}</div><div class="lane-count">${rows.length}</div></div><div class="lane-cards">${rows.map(boardCardHtml).join("")}</div></div>`;
-      }).join("");
+      $("workloadBoard").innerHTML=lanes.map(s=>{ const rows=state.records.filter(r=>r.status===s); return `<div class="lane"><div class="lane-head"><div class="lane-title">${s}</div><div class="lane-count">${rows.length}</div></div><div class="lane-cards">${rows.map(boardCardHtml).join("")}</div></div>`; }).join("");
       document.querySelectorAll("#workloadBoard .item-card").forEach(c=>c.onclick=()=>openMove(c.dataset.id));
     }
 
     function renderLocations() {
-      const tones=["blue","purple","green","red","amber","dark","green"];
-      $("largeWarehouseMap").innerHTML=state.locations.map((loc,i)=>{
-        const rows=state.records.filter(r=>r.location===loc);
-        return `<div class="bay location-cage-card" data-location="${esc(loc)}" style="cursor:pointer;"><div><h4>${esc(loc)}</h4><small>${rows.length ? "Current freight in this location" : "Location currently clear"}</small></div><div class="big">${rows.length}</div></div>`;
-      }).join("");
-      document.querySelectorAll(".location-cage-card").forEach(card=>{
-        card.onclick=()=>{
-          activeLocationFilter=card.dataset.location;
-          setView("tracking");
-          renderTracking();
-        };
-      });
+      $("largeWarehouseMap").innerHTML=state.locations.map((loc,i)=>{ const rows=state.records.filter(r=>r.location===loc); return `<div class="bay location-cage-card" data-location="${esc(loc)}" style="cursor:pointer;"><div><h4>${esc(loc)}</h4><small>${rows.length ? "Current freight in this location" : "Location currently clear"}</small></div><div class="big">${rows.length}</div></div>`; }).join("");
+      document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; setView("tracking"); renderTracking(); }; });
     }
 
     function renderTracking() {
@@ -1065,10 +455,7 @@
       $("locationFilterPill").style.display=activeLocationFilter ? "inline-flex" : "none";
       $("clearLocationFilterBtn").style.display=activeLocationFilter ? "inline-flex" : "none";
       $("locationFilterPill").textContent=activeLocationFilter ? "Cage: " + activeLocationFilter : "";
-      const rows=state.records.filter(r=>{
-        const h=[r.id,r.supplier,r.po,r.site,r.location,r.reference,r.connote].join(" ").toLowerCase();
-        return (!q||h.includes(q))&&(!sf||r.status===sf)&&(!activeLocationFilter||r.location===activeLocationFilter);
-      });
+      const rows=state.records.filter(r=>{ const h=[r.id,r.supplier,r.po,r.site,r.location,r.reference,r.connote].join(" ").toLowerCase(); return (!q||h.includes(q))&&(!sf||r.status===sf)&&(!activeLocationFilter||r.location===activeLocationFilter); });
       $("trackingBody").innerHTML=rows.map(r=>`<tr><td><strong>${esc(r.id)}</strong></td><td>${esc(r.supplier)}</td><td>${esc(r.po||"-")}</td><td>${esc(r.site)}</td><td>${totalQty(r)}</td><td>${esc(r.location)}</td><td><span class="badge ${tone(r.status)}">${esc(r.status)}</span></td><td>${fmt(r.updated)}</td><td><button class="btn btn-light updateBtn" data-id="${esc(r.id)}">Update</button></td></tr>`).join("");
       document.querySelectorAll(".updateBtn").forEach(b=>b.onclick=()=>openMove(b.dataset.id));
     }
@@ -1090,23 +477,16 @@
 
     function renderReports() {
       const sites=["BHP Olympic Dam","BHP Carrapateena","BHP Prominent Hill","Other / Unknown"];
-      $("reportsBody").innerHTML=sites.map(site=>{
-        const rs=state.records.filter(r=>r.site===site);
-        return `<tr><td><strong>${site}</strong></td><td>${rs.length}</td><td>${rs.reduce((a,r)=>a+totalQty(r),0)}</td><td>${Math.round(rs.reduce((a,r)=>a+totalWeight(r),0))} kg</td><td>${rs.filter(r=>STATUS.indexOf(r.status)>=4).length}</td><td>${rs.filter(r=>r.status==="Ready to Invoice").length}</td></tr>`;
-      }).join("");
+      $("reportsBody").innerHTML=sites.map(site=>{ const rs=state.records.filter(r=>r.site===site); return `<tr><td><strong>${site}</strong></td><td>${rs.length}</td><td>${rs.reduce((a,r)=>a+totalQty(r),0)}</td><td>${Math.round(rs.reduce((a,r)=>a+totalWeight(r),0))} kg</td><td>${rs.filter(r=>STATUS.indexOf(r.status)>=4).length}</td><td>${rs.filter(r=>r.status==="Ready to Invoice").length}</td></tr>`; }).join("");
     }
 
     function syncMasterData() {
-      function options(arr,placeholder) {
-        return `<option value="">${placeholder}</option>` + arr.map(x=>`<option>${esc(x)}</option>`).join("");
-      }
+      function options(arr,placeholder) { return `<option value="">${placeholder}</option>` + arr.map(x=>`<option>${esc(x)}</option>`).join(""); }
       const rv=$("receivedBy").value;
       $("receivedBy").innerHTML=options(state.staff,"Select ELX staff member");
       if(state.staff.includes(rv)) $("receivedBy").value=rv;
-
       $("staffList").innerHTML=state.staff.map((s,i)=>`<div class="staff-line"><span>${esc(s)}</span><button class="btn btn-light removeStaff" data-i="${i}">Remove</button></div>`).join("");
       $("locationList").innerHTML=state.locations.map((s,i)=>`<div class="staff-line"><span>${esc(s)}</span><button class="btn btn-light removeLocation" data-i="${i}">Remove</button></div>`).join("");
-
       document.querySelectorAll(".removeStaff").forEach(b=>b.onclick=()=>{ if(state.staff.length>1){ state.staff.splice(+b.dataset.i,1); saveState(); renderAll(); } });
       document.querySelectorAll(".removeLocation").forEach(b=>b.onclick=()=>{ if(state.locations.length>1){ state.locations.splice(+b.dataset.i,1); saveState(); renderAll(); } });
     }
@@ -1122,7 +502,7 @@
       updateItemSummary();
     }
 
-    // --- ITEMS MANAGEMENT ---
+    // ========== ITEMS MANAGEMENT ==========
     function makeItemRow(data={type:"",qty:1,weight:""}) {
       const tr=document.createElement("tr");
       tr.innerHTML=`<td><div class="field"><label>Item Type</label><select class="itemType">${["Carton","Satchel","Pallet","Crate","Basket","Parcel","Stillage","IBC","Loose Freight","Other"].map(x=>`<option${x===data.type?" selected":""}>${x}</option>`).join("")}</select></div></td><td><div class="field"><label>Quantity</label><input class="itemQty" type="number" min="1" value="${data.qty}"></div></td><td><div class="field"><label>Weight (kg)</label><input class="itemWeight" type="number" min="0" step="0.1" value="${data.weight}"></div></td><td><button class="remove-line removeItem" type="button">×</button></td>`;
@@ -1160,7 +540,7 @@
       resetItems();
     }
 
-    // --- imageInput.onchange stores the file ---
+    // ========== IMAGE INPUT ==========
     $("imageInput").onchange = function(e) {
       const f = e.target.files[0];
       if(!f) return;
@@ -1175,7 +555,7 @@
       $("meterBar").style.width = "0%";
     };
 
-    // --- runOcrBtn uses selectedFile, sends base64 ---
+    // ========== RUN OCR (with full Azure response log) ==========
     $("runOcrBtn").onclick = async function() {
       if (!selectedFile) {
         showToast("No image selected");
@@ -1231,6 +611,8 @@
         }
 
         const data = await ocrResponse.json();
+        console.log('📋 Full Azure response:', data);   // <-- DIAGNOSTIC LOG
+
         const extracted = data.extracted || {};
 
         // Populate OCR modal fields
@@ -1272,45 +654,44 @@
       }
     };
 
-    // --- Use Extracted Fields (direct DOM access + logs) ---
+    // ========== USE EXTRACTED FIELDS (with parseInt fix) ==========
     $("useOcrBtn").onclick = function() {
-        console.log("✅ Use Extracted Fields clicked");
+      console.log("✅ Use Extracted Fields clicked");
 
-        // Read OCR modal values
-        const supplier = document.getElementById('ocrSupplier')?.value || '';
-        const po = document.getElementById('ocrPo')?.value || '';
-        const site = document.getElementById('ocrSite')?.value || '';
-        const contractor = document.getElementById('ocrContractor')?.value || '';
-        const connote = document.getElementById('ocrConnote')?.value || '';
-        const reference = document.getElementById('ocrReference')?.value || '';
-        const itemType = document.getElementById('ocrItemType')?.value || '';
-        const qty = parseInt(document.getElementById('ocrQty')?.value) || 1;
-        const weight = document.getElementById('ocrWeight')?.value || '';
+      const supplier = document.getElementById('ocrSupplier')?.value || '';
+      const po = document.getElementById('ocrPo')?.value || '';
+      const site = document.getElementById('ocrSite')?.value || '';
+      const contractor = document.getElementById('ocrContractor')?.value || '';
+      const connote = document.getElementById('ocrConnote')?.value || '';
+      const reference = document.getElementById('ocrReference')?.value || '';
+      const itemType = document.getElementById('ocrItemType')?.value || '';
+      // FIX: use parseInt to avoid "I" invalid value
+      const qty = parseInt(document.getElementById('ocrQty')?.value) || 1;
+      const weight = document.getElementById('ocrWeight')?.value || '';
 
-        console.log("📦 Extracted values:", { supplier, po, site, contractor, connote, reference, itemType, qty, weight });
+      console.log("📦 Extracted values:", { supplier, po, site, contractor, connote, reference, itemType, qty, weight });
 
-        // Populate main form
-        if (supplier) document.getElementById('supplier').value = supplier;
-        if (po) document.getElementById('po').value = po;
-        if (site) document.getElementById('site').value = site;
-        if (contractor) document.getElementById('contractor').value = contractor;
-        if (connote) document.getElementById('connote').value = connote;
-        if (reference) document.getElementById('reference').value = reference;
+      // Populate main form
+      if (supplier) document.getElementById('supplier').value = supplier;
+      if (po) document.getElementById('po').value = po;
+      if (site) document.getElementById('site').value = site;
+      if (contractor) document.getElementById('contractor').value = contractor;
+      if (connote) document.getElementById('connote').value = connote;
+      if (reference) document.getElementById('reference').value = reference;
 
-        // Update items table
-        const itemsBody = document.getElementById('itemsBody');
-        itemsBody.innerHTML = '';
-        const newRow = makeItemRow({ type: itemType, qty: qty, weight: weight });
-        itemsBody.appendChild(newRow);
-        updateItemSummary();
+      // Update items
+      const itemsBody = document.getElementById('itemsBody');
+      itemsBody.innerHTML = '';
+      const newRow = makeItemRow({ type: itemType, qty: qty, weight: weight });
+      itemsBody.appendChild(newRow);
+      updateItemSummary();
 
-        // Close modal and switch view
-        closeOcr();
-        setView('receive');
-        showToast('OCR fields pre-filled — review and confirm');
+      closeOcr();
+      setView('receive');
+      showToast('OCR fields pre-filled — review and confirm');
     };
 
-    // --- Confirm Goods Received ---
+    // ========== CONFIRM GOODS RECEIVED ==========
     $("confirmReceiveBtn").onclick = async function() {
       const missing = [];
       if(!$("supplier").value.trim()) missing.push("Supplier");
@@ -1380,7 +761,7 @@
       }
     };
 
-    // --- SHOW RECEIPT ---
+    // ========== SHOW RECEIPT ==========
     function showReceipt(record) {
       const url = record.receiptUrl || buildReceiptUrl(record);
       $("receiptGrNumber").textContent = record.id;
@@ -1388,70 +769,22 @@
       $("receiptSite").value = record.site || "";
       $("receiptReceivedBy").value = record.receivedBy || "";
       $("receiptDateTime").value = new Date(record.created).toLocaleString();
-
-      $("receiptItemsBody").innerHTML = (record.items || []).map(i => `
-        <tr>
-          <td>${esc(i.type || "Freight")}</td>
-          <td>${Number(i.qty)||0}</td>
-          <td>${Number(i.weight)||0} kg</td>
-        </tr>
-      `).join("");
-
+      $("receiptItemsBody").innerHTML = (record.items || []).map(i => `<tr><td>${esc(i.type || "Freight")}</td><td>${Number(i.qty)||0}</td><td>${Number(i.weight)||0} kg</td></tr>`).join("");
       $("receiptUrlText").textContent = url;
       $("receiptQr").innerHTML = "";
-
       if (window.QRCode) {
-        new QRCode($("receiptQr"), {
-          text: url,
-          width: 220,
-          height: 220,
-          correctLevel: QRCode.CorrectLevel.M
-        });
+        new QRCode($("receiptQr"), { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
       } else {
         $("receiptQr").innerHTML = '<div class="detail-box">QR library unavailable</div>';
       }
-
       $("openReceiptBtn").onclick = () => openReceiptPage(record, url);
       $("printReceiptBtn").onclick = () => printReceipt(record, url);
       $("receiptModal").classList.add("open");
     }
 
     function openReceiptPage(record, url) {
-      const items = (record.items||[]).map(i => `
-        <tr><td>${esc(i.type)}</td><td>${Number(i.qty)||0}</td><td>${Number(i.weight)||0} kg</td></tr>
-      `).join("");
-
-      const receiptHtml = `<!doctype html>
-      <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-      <title>${record.id} Receipt</title>
-      <style>
-        body{font-family:Segoe UI,Arial,sans-serif;background:#f4f6f8;margin:0;padding:24px;color:#101827}
-        .card{max-width:760px;margin:auto;background:white;border-radius:20px;padding:24px;box-shadow:0 16px 44px rgba(0,0,0,.08)}
-        .brand{font-weight:900;font-size:22px}.brand span{color:#d71920}
-        .ok{margin:18px 0;padding:14px;border-radius:14px;background:#ecfdf5;color:#047857;font-weight:800}
-        table{width:100%;border-collapse:collapse;margin-top:18px}
-        th,td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left}
-        th{background:#f8fafc;font-size:12px;text-transform:uppercase;color:#64748b}
-        .meta{color:#64748b;font-size:13px;line-height:1.6}
-        .ref{font-size:24px;font-weight:900;margin:8px 0 16px}
-        .footer{margin-top:22px;color:#64748b;font-size:12px}
-      </style></head><body>
-      <div class="card">
-        <div class="brand">Energy <span>LogistiX</span></div>
-        <div class="ok">✓ Goods received by Energy LogistiX</div>
-        <div class="meta">ELX Reference</div>
-        <div class="ref">${record.id}</div>
-        <div class="meta">
-          Received: ${new Date(record.created).toLocaleString()}<br>
-          Received at: 7 Creswell Rd, Largs North SA 5016<br>
-          Supplier: ${esc(record.supplier)}<br>
-          Destination: ${esc(record.site)}<br>
-          Received by: ${esc(record.receivedBy)}
-        </div>
-        <table><thead><tr><th>Item</th><th>Qty</th><th>Weight</th></tr></thead><tbody>${items}</tbody></table>
-        <div class="footer">Supplier Proof of Delivery / Goods Received receipt.</div>
-      </div></body></html>`;
-
+      const items = (record.items||[]).map(i => `<tr><td>${esc(i.type)}</td><td>${Number(i.qty)||0}</td><td>${Number(i.weight)||0} kg</td></tr>`).join("");
+      const receiptHtml = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${record.id} Receipt</title><style>body{font-family:Segoe UI,Arial,sans-serif;background:#f4f6f8;margin:0;padding:24px;color:#101827}.card{max-width:760px;margin:auto;background:white;border-radius:20px;padding:24px;box-shadow:0 16px 44px rgba(0,0,0,.08)}.brand{font-weight:900;font-size:22px}.brand span{color:#d71920}.ok{margin:18px 0;padding:14px;border-radius:14px;background:#ecfdf5;color:#047857;font-weight:800}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left}th{background:#f8fafc;font-size:12px;text-transform:uppercase;color:#64748b}.meta{color:#64748b;font-size:13px;line-height:1.6}.ref{font-size:24px;font-weight:900;margin:8px 0 16px}.footer{margin-top:22px;color:#64748b;font-size:12px}</style></head><body><div class="card"><div class="brand">Energy <span>LogistiX</span></div><div class="ok">✓ Goods received by Energy LogistiX</div><div class="meta">ELX Reference</div><div class="ref">${record.id}</div><div class="meta">Received: ${new Date(record.created).toLocaleString()}<br>Received at: 7 Creswell Rd, Largs North SA 5016<br>Supplier: ${esc(record.supplier)}<br>Destination: ${esc(record.site)}<br>Received by: ${esc(record.receivedBy)}</div><table><thead><tr><th>Item</th><th>Qty</th><th>Weight</th></tr></thead><tbody>${items}</tbody></table><div class="footer">Supplier Proof of Delivery / Goods Received receipt.</div></div></body></html>`;
       const w = window.open("", "_blank");
       if (!w) { showToast("Pop-up blocked — allow pop-ups to preview receipt"); return; }
       w.document.open();
@@ -1464,28 +797,26 @@
       showToast("Receipt opened — use browser Print → Save as PDF");
     }
 
-    // --- LEGACY functions ---
+    // ========== LEGACY HELPERS ==========
     function nextId() {
       const d=new Date();
       const p=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
       const nums=state.records.filter(r=>r.id.includes(p)).map(r=>Number(r.id.split("-").pop())).filter(Number.isFinite);
       return `ELX-GR-${p}-${String(Math.max(0,...nums)+1).padStart(5,"0")}`;
     }
-
     function makeReceiptToken() {
       const bytes = new Uint8Array(18);
       if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
       else for (let i=0;i<bytes.length;i++) bytes[i]=Math.floor(Math.random()*256);
       return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
     }
-
     function buildReceiptUrl(record) {
       const token = record.receiptToken || makeReceiptToken();
       record.receiptToken = token;
       return `https://receipt.energylogistix.com.au/r/${token}`;
     }
 
-    // --- MODALS ---
+    // ========== MODAL CONTROLS ==========
     function openOcr() { $("receiveModal").classList.add("open"); }
     function closeOcr() { $("receiveModal").classList.remove("open"); }
     function closeMove() { $("moveModal").classList.remove("open"); }
@@ -1504,81 +835,49 @@
       $("moveModal").classList.add("open");
     }
 
-    // --- EVENT BINDINGS ---
+    // ========== EVENT BINDINGS ==========
     $("chooseImageBtn").onclick = () => $("imageInput").click();
-
-    $("nav").addEventListener("click", function(e) {
-      const n = e.target.closest(".nav-item");
-      if(n) setView(n.dataset.view);
-    });
-
+    $("nav").addEventListener("click", function(e) { const n = e.target.closest(".nav-item"); if(n) setView(n.dataset.view); });
     $("startReceiveScan").onclick = openOcr;
     $("closeModal").onclick = $("cancelOcrBtn").onclick = closeOcr;
     $("closeMoveModal").onclick = $("cancelMoveBtn").onclick = closeMove;
-    $("closeReceiptModal").onclick = $("doneReceiptBtn").onclick = function() {
-      $("receiptModal").classList.remove("open");
-      setView("dashboard");
-    };
+    $("closeReceiptModal").onclick = $("doneReceiptBtn").onclick = function() { $("receiptModal").classList.remove("open"); setView("dashboard"); };
     $("clearReceiveBtn").onclick = clearReceive;
 
-    // --- Save Move (legacy) ---
+    // ========== SAVE MOVE (legacy) ==========
     $("saveMoveBtn").onclick = function() {
       const r = state.records.find(x => x.id === selectedId);
       if(!r) return;
       const oldStatus = r.status;
       const oldLocation = r.location;
       const now = new Date().toISOString();
-
       r.status = $("moveStatus").value;
       r.location = $("moveLocation").value;
       r.updated = now;
       r.events = r.events || [];
-      r.events.push({
-        time: now,
-        event: `${oldStatus} → ${r.status}`,
-        user: $("moveUser").value,
-        location: r.location,
-        status: r.status,
-        note: $("moveNote").value.trim() || `Location: ${oldLocation} → ${r.location}`
-      });
-
+      r.events.push({ time: now, event: `${oldStatus} → ${r.status}`, user: $("moveUser").value, location: r.location, status: r.status, note: $("moveNote").value.trim() || `Location: ${oldLocation} → ${r.location}` });
       saveState();
       closeMove();
       renderAll();
       showToast("Freight updated — dashboard refreshed");
     };
 
-    // --- Admin ---
+    // ========== ADMIN ==========
     $("addStaffBtn").onclick = function() {
       const v = $("newStaff").value.trim();
-      if(v && !state.staff.includes(v)) {
-        state.staff.push(v);
-        $("newStaff").value = "";
-        saveState();
-        renderAll();
-      }
+      if(v && !state.staff.includes(v)) { state.staff.push(v); $("newStaff").value=""; saveState(); renderAll(); }
     };
     $("addLocationBtn").onclick = function() {
       const v = $("newLocation").value.trim();
-      if(v && !state.locations.includes(v)) {
-        state.locations.push(v);
-        $("newLocation").value = "";
-        saveState();
-        renderAll();
-      }
+      if(v && !state.locations.includes(v)) { state.locations.push(v); $("newLocation").value=""; saveState(); renderAll(); }
     };
 
     $("statusFilter").innerHTML = '<option value="">All statuses</option>' + STATUS.map(s => `<option>${s}</option>`).join("");
     $("searchInput").addEventListener("input", renderTracking);
     $("statusFilter").addEventListener("change", renderTracking);
-    $("clearLocationFilterBtn").onclick = function() {
-      activeLocationFilter = "";
-      renderTracking();
-    };
+    $("clearLocationFilterBtn").onclick = function() { activeLocationFilter = ""; renderTracking(); };
 
-    function refreshTimestamp() {
-      $("timestampText").textContent = "Automatic timestamp: " + new Date().toLocaleString();
-    }
+    function refreshTimestamp() { $("timestampText").textContent = "Automatic timestamp: " + new Date().toLocaleString(); }
     setInterval(refreshTimestamp, 1000);
     refreshTimestamp();
 
