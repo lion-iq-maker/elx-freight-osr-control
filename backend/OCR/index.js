@@ -24,10 +24,9 @@ module.exports = async function (context, req) {
     try {
         const imageBuffer = Buffer.from(imageBase64, 'base64');
 
-        // SWITCHED: Use Layout model with keyValuePairs feature
-        const modelId = 'prebuilt-layout';
-        const apiVersion = '2024-11-30';  // Latest GA version
-        const analyzeUrl = `${endpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=${apiVersion}&features=keyValuePairs`;
+        const modelId = 'prebuilt-document';
+        const apiVersion = '2023-07-31';
+        const analyzeUrl = `${endpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=${apiVersion}`;
 
         const response = await fetch(analyzeUrl, {
             method: 'POST',
@@ -74,10 +73,10 @@ module.exports = async function (context, req) {
             throw new Error('Analysis timed out after 30 seconds.');
         }
 
-        // Extract key-value pairs
+        // ========== EXTRACTION LOGIC ==========
         const allPairs = {};
-        
-        // Method 1: From keyValuePairs (primary)
+
+        // 1. From keyValuePairs
         if (result.keyValuePairs) {
             for (const kv of result.keyValuePairs) {
                 const key = kv.key?.content || '';
@@ -89,7 +88,7 @@ module.exports = async function (context, req) {
             }
         }
 
-        // Method 2: From documents.fields (fallback)
+        // 2. From documents.fields
         if (result.documents && result.documents.length > 0) {
             const doc = result.documents[0];
             if (doc.fields) {
@@ -102,14 +101,15 @@ module.exports = async function (context, req) {
             }
         }
 
-        // Method 3: Fallback to raw text search if keyValuePairs is empty
+        // 3. Raw text fallback
         const rawText = result.content || '';
         const fallbackExtract = (pattern) => {
-            const match = rawText.match(new RegExp(pattern + '\\s*[:#\\-]?\\s*(.*?)(?:\\n|$)', 'i'));
+            const regex = new RegExp(pattern + '\\s*[:#\\-]?\\s*(.*?)(?:\\n|$)', 'i');
+            const match = rawText.match(regex);
             return match ? match[1].trim() : '';
         };
 
-        // Define mapping with synonyms
+        // 4. Map with extensive synonyms
         const map = {
             supplier: ['supplier', 'vendor', 'sender', 'from', 'consignor', 'shipper', 'shipped by'],
             po: ['po number', 'purchase order', 'po', 'p/o', 'order number'],
@@ -127,13 +127,13 @@ module.exports = async function (context, req) {
             let found = '';
             // First try from keyValuePairs
             for (const syn of synonyms) {
-                const normalized = syn.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+                const normalized = syn.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
                 if (allPairs[normalized]) {
                     found = allPairs[normalized];
                     break;
                 }
             }
-            // If not found, try fallback from raw text
+            // If not found, try raw text
             if (!found) {
                 const pattern = synonyms.join('|');
                 found = fallbackExtract(pattern);
@@ -141,10 +141,9 @@ module.exports = async function (context, req) {
             extracted[key] = found || '';
         }
 
-        // Also keep raw text for debugging
         extracted.rawText = rawText;
 
-        context.log('Extracted:', extracted);
+        context.log('📦 Extracted from Azure:', extracted);
 
         context.res = {
             status: 200,
