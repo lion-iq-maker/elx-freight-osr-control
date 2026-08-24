@@ -1284,7 +1284,7 @@
         const connote = document.getElementById('ocrConnote')?.value || '';
         const reference = document.getElementById('ocrReference')?.value || '';
         const itemType = document.getElementById('ocrItemType')?.value || '';
-        const qty = document.getElementById('ocrQty')?.value || 1;
+        const qty = parseInt(document.getElementById('ocrQty')?.value) || 1;
         const weight = document.getElementById('ocrWeight')?.value || '';
 
         console.log("📦 Extracted values:", { supplier, po, site, contractor, connote, reference, itemType, qty, weight });
