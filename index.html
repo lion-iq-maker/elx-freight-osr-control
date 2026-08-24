@@ -183,7 +183,7 @@
   </style>
 </head>
 <body>
-  <!-- ========== HTML STRUCTURE (unchanged) ========== -->
+  <!-- ========== HTML STRUCTURE ========== -->
   <div class="app">
     <aside class="sidebar">
       <div class="brand"><div class="brand-mark">ELX</div><div><h1>Freight Control</h1><p>Energy LogistiX · BHP Freight</p></div></div>
@@ -258,7 +258,26 @@
             <div class="panel-head"><div><h3>Freight Tracking</h3><p>Search any ELX GR and move freight through the operational lifecycle.</p></div></div>
             <div style="display:grid;grid-template-rows:auto 1fr;min-height:0;">
               <div class="search-row"><input id="searchInput" placeholder="Search ELX GR, PO, supplier, connote, reference or site"><select id="statusFilter" class="status-select"></select><span class="small-pill" id="locationFilterPill" style="display:none;"></span><button class="btn btn-light" id="clearLocationFilterBtn" style="display:none;">Clear Cage Filter</button></div>
-              <div class="table-wrap"><table><thead><tr><th>ELX GR</th><th>Supplier</th><th>PO</th><th>Destination</th><th>Qty</th><th>Location</th><th>Status</th><th>Updated</th><th></th></tr></thead><tbody id="trackingBody"></tbody></table></div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ELX GR</th>
+                      <th>Supplier</th>
+                      <th>PO</th>
+                      <th>Destination</th>
+                      <th>Items</th>
+                      <th>Total Qty</th>
+                      <th>Total Weight</th>
+                      <th>Location</th>
+                      <th>Status</th>
+                      <th>Updated</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="trackingBody"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -449,15 +468,59 @@
       document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; setView("tracking"); renderTracking(); }; });
     }
 
+    // ========== UPDATED: RENDER TRACKING (API-based) ==========
     function renderTracking() {
-      const q=$("searchInput").value.trim().toLowerCase();
-      const sf=$("statusFilter").value;
-      $("locationFilterPill").style.display=activeLocationFilter ? "inline-flex" : "none";
-      $("clearLocationFilterBtn").style.display=activeLocationFilter ? "inline-flex" : "none";
-      $("locationFilterPill").textContent=activeLocationFilter ? "Cage: " + activeLocationFilter : "";
-      const rows=state.records.filter(r=>{ const h=[r.id,r.supplier,r.po,r.site,r.location,r.reference,r.connote].join(" ").toLowerCase(); return (!q||h.includes(q))&&(!sf||r.status===sf)&&(!activeLocationFilter||r.location===activeLocationFilter); });
-      $("trackingBody").innerHTML=rows.map(r=>`<tr><td><strong>${esc(r.id)}</strong></td><td>${esc(r.supplier)}</td><td>${esc(r.po||"-")}</td><td>${esc(r.site)}</td><td>${totalQty(r)}</td><td>${esc(r.location)}</td><td><span class="badge ${tone(r.status)}">${esc(r.status)}</span></td><td>${fmt(r.updated)}</td><td><button class="btn btn-light updateBtn" data-id="${esc(r.id)}">Update</button></td></tr>`).join("");
-      document.querySelectorAll(".updateBtn").forEach(b=>b.onclick=()=>openMove(b.dataset.id));
+      const search = document.getElementById('searchInput').value.trim();
+      const statusFilter = document.getElementById('statusFilter').value;
+      const location = activeLocationFilter;
+
+      // Build query string
+      let url = `${API_BASE}/receipts?`;
+      if (search) url += `search=${encodeURIComponent(search)}&`;
+      if (statusFilter) url += `status=${encodeURIComponent(statusFilter)}&`;
+      if (location) url += `locationId=${encodeURIComponent(location)}&`;
+      url += 'page=1&pageSize=100';
+
+      // Show loading
+      document.getElementById('trackingBody').innerHTML = '<tr><td colspan="11">Loading...</td></tr>';
+
+      fetch(url)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch tracking data');
+          return res.json();
+        })
+        .then(data => {
+          const records = data.records || [];
+          let html = '';
+          records.forEach(r => {
+            const itemsSummary = r.itemsSummary || '';
+            const totalQty = r.totalQty || 0;
+            const totalWeight = r.totalWeight || 0;
+            html += `
+              <tr>
+                <td><strong>${esc(r.grNumber)}</strong></td>
+                <td>${esc(r.supplier)}</td>
+                <td>${esc(r.po || '-')}</td>
+                <td>${esc(r.site)}</td>
+                <td>${esc(itemsSummary)}</td>
+                <td>${totalQty}</td>
+                <td>${totalWeight} kg</td>
+                <td>${esc(r.location || '-')}</td>
+                <td><span class="badge ${tone(r.status)}">${esc(r.status)}</span></td>
+                <td>${fmt(r.updatedAt)}</td>
+                <td><button class="btn btn-light updateBtn" data-id="${esc(r.grNumber)}">Update</button></td>
+              </tr>
+            `;
+          });
+          document.getElementById('trackingBody').innerHTML = html || '<tr><td colspan="11">No records found.</td></tr>';
+
+          // Attach event listeners for Update buttons
+          document.querySelectorAll('.updateBtn').forEach(b => b.onclick = () => openMove(b.dataset.id));
+        })
+        .catch(err => {
+          console.error('Tracking error:', err);
+          document.getElementById('trackingBody').innerHTML = '<tr><td colspan="11">Error loading data. Please try again.</td></tr>';
+        });
     }
 
     function renderTimeline() {
