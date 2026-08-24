@@ -73,14 +73,14 @@ module.exports = async function (context, req) {
             throw new Error('Analysis timed out after 30 seconds.');
         }
 
-        // ========== EXTRACTION LOGIC ==========
+        // ========== SAFE EXTRACTION ==========
         const allPairs = {};
 
         // 1. From keyValuePairs
-        if (result.keyValuePairs) {
+        if (result.keyValuePairs && Array.isArray(result.keyValuePairs)) {
             for (const kv of result.keyValuePairs) {
-                const key = kv.key?.content || '';
-                const value = kv.value?.content || '';
+                const key = kv.key?.content ?? '';
+                const value = kv.value?.content ?? '';
                 if (key && value) {
                     const normalized = key.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
                     allPairs[normalized] = value;
@@ -89,13 +89,14 @@ module.exports = async function (context, req) {
         }
 
         // 2. From documents.fields
-        if (result.documents && result.documents.length > 0) {
+        if (result.documents && Array.isArray(result.documents) && result.documents.length > 0) {
             const doc = result.documents[0];
             if (doc.fields) {
-                for (const [key, field] of Object.entries(doc.fields)) {
-                    if (field.content) {
-                        const normalized = key.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
-                        allPairs[normalized] = field.content;
+                for (const [fieldKey, field] of Object.entries(doc.fields)) {
+                    const content = field?.content ?? '';
+                    if (fieldKey && content) {
+                        const normalized = fieldKey.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
+                        allPairs[normalized] = content;
                     }
                 }
             }
@@ -103,13 +104,15 @@ module.exports = async function (context, req) {
 
         // 3. Raw text fallback
         const rawText = result.content || '';
+        // ✅ FIXED: safely handle match[1]
         const fallbackExtract = (pattern) => {
+            if (!rawText) return '';
             const regex = new RegExp(pattern + '\\s*[:#\\-]?\\s*(.*?)(?:\\n|$)', 'i');
             const match = rawText.match(regex);
-            return match ? match[1].trim() : '';
+            return (match && match[1]) ? match[1].trim() : '';
         };
 
-        // 4. Map with extensive synonyms
+        // 4. Map with synonyms
         const map = {
             supplier: ['supplier', 'vendor', 'sender', 'from', 'consignor', 'shipper', 'shipped by'],
             po: ['po number', 'purchase order', 'po', 'p/o', 'order number'],
@@ -125,7 +128,6 @@ module.exports = async function (context, req) {
         const extracted = {};
         for (const [key, synonyms] of Object.entries(map)) {
             let found = '';
-            // First try from keyValuePairs
             for (const syn of synonyms) {
                 const normalized = syn.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
                 if (allPairs[normalized]) {
@@ -133,7 +135,6 @@ module.exports = async function (context, req) {
                     break;
                 }
             }
-            // If not found, try raw text
             if (!found) {
                 const pattern = synonyms.join('|');
                 found = fallbackExtract(pattern);
