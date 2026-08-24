@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ELX Freight Control</title>
-  <!-- CSP to allow connections to Azure Functions and inline scripts -->
- <meta http-equiv="Content-Security-Policy" 
-      content="default-src 'self'; connect-src 'self' blob: https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline';">
+  <!-- CSP: allow self, Azure API, blob for image fetch, and CDN scripts -->
+  <meta http-equiv="Content-Security-Policy" 
+        content="default-src 'self'; connect-src 'self' blob: https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline';">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <style>
-    /* ... (all your existing CSS – unchanged) ... */
     :root {
       --elx-red: #d71920;
       --elx-red-dark: #ad1117;
@@ -819,7 +819,7 @@
           </div>
         </div>
         <div>
-          <!-- UPDATED OCR FIELDS - Match main form with Contractor and item row -->
+          <!-- OCR fields matching main form -->
           <div class="field-grid">
             <div class="field"><label>Supplier / Sender</label><input id="ocrSupplier" placeholder="Extracted supplier"></div>
             <div class="field"><label>Delivery Site</label><select id="ocrSite"><option value="">Select extracted site</option><option>BHP Olympic Dam</option><option>BHP Carrapateena</option><option>BHP Prominent Hill</option><option>Other / Unknown</option></select></div>
@@ -829,7 +829,7 @@
             <div class="field"><label>Connote / Consignment</label><input id="ocrConnote" placeholder="Extracted connote"></div>
           </div>
 
-          <!-- Freight Item row with three empty fields -->
+          <!-- Item row with Type, Quantity, Weight -->
           <div style="margin-top:12px;font-weight:900;font-size:12px;">Freight Item (OCR will fill Quantity)</div>
           <div class="field-grid" style="grid-template-columns: 1fr 1fr 1fr;">
             <div class="field"><label>Item Type</label><select id="ocrItemType"><option value="">Select type</option><option>Carton</option><option>Satchel</option><option>Pallet</option><option>Crate</option><option>Basket</option><option>Parcel</option><option>Stillage</option><option>IBC</option><option>Loose Freight</option><option>Other</option></select></div>
@@ -932,12 +932,13 @@
     // --- CONFIGURATION ---
     const API_BASE = 'https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net/api';
 
-    // --- EXISTING STATE & HELPERS ---
+    // --- GLOBAL STATE ---
     const STATUS = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched","Delivered","Ready to Invoice"];
     const DEFAULT_STAFF = ["Rahul Tamang","Staff Member 2","Staff Member 3"];
     const DEFAULT_LOCATIONS = ["BHP Olympic Dam Cage","BHP Carrapateena Cage","BHP Prominent Hill Cage","Quarantine / Exception Area","General Receiving Area","Ready Dispatch Zone","Loaded / Outbound Bay"];
     let selectedId = null;
     let selectedImage = null;
+    let selectedFile = null;       // ← NEW: holds the actual File object
     let activeLocationFilter = "";
 
     function seedRecord(id,supplier,po,site,location,status,qty,weight,user) {
@@ -1159,9 +1160,24 @@
       resetItems();
     }
 
-    // --- OCR using Azure AI ---
+    // --- UPDATED: imageInput.onchange stores the file ---
+    $("imageInput").onchange = function(e) {
+      const f = e.target.files[0];
+      if(!f) return;
+      selectedFile = f; // store actual file object
+      const url = URL.createObjectURL(f);
+      selectedImage = url; // keep for preview
+      $("previewImg").src = url;
+      $("previewWrap").style.display = "block";
+      $("runOcrBtn").disabled = false;
+      $("ocrBadge").textContent = "Ready";
+      $("ocrBadge").className = "badge blue";
+      $("meterBar").style.width = "0%";
+    };
+
+    // --- UPDATED: runOcrBtn uses selectedFile directly, sends base64 ---
     $("runOcrBtn").onclick = async function() {
-      if (!selectedImage) {
+      if (!selectedFile) {
         showToast("No image selected");
         return;
       }
@@ -1170,14 +1186,45 @@
       $("runOcrBtn").textContent = "Processing...";
 
       try {
-        const response = await fetch(selectedImage);
-        const blob = await response.blob();
-        const formData = new FormData();
-        formData.append('file', blob, 'label.jpg');
+        let file = selectedFile;
+        let blob = file;
 
+        // Check if HEIC (by extension or MIME type)
+        const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
+                       (file.name && file.name.toLowerCase().match(/\.heic$/));
+
+        let finalBlob = blob;
+
+        // Convert HEIC if needed and library available
+        if (isHeic && window.heic2any) {
+          try {
+            const jpegBlob = await window.heic2any({
+              blob: blob,
+              toType: 'image/jpeg',
+              quality: 0.9
+            });
+            finalBlob = jpegBlob;
+            showToast("HEIC converted to JPEG");
+          } catch (convError) {
+            console.warn('HEIC conversion failed:', convError);
+            // fallback to original
+            finalBlob = blob;
+          }
+        }
+
+        // Convert to base64
+        const reader = new FileReader();
+        const base64 = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(finalBlob);
+        });
+
+        // Send to backend
         const ocrResponse = await fetch(`${API_BASE}/OCR`, {
           method: 'POST',
-          body: formData
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64 })
         });
 
         if (!ocrResponse.ok) {
@@ -1229,7 +1276,6 @@
 
     // --- Use Extracted Fields ---
     $("useOcrBtn").onclick = ()=>{
-      // Map OCR fields to main form
       if($("ocrSupplier").value) $("supplier").value = $("ocrSupplier").value;
       if($("ocrPo").value) $("po").value = $("ocrPo").value;
       if($("ocrSite").value) $("site").value = $("ocrSite").value;
@@ -1237,12 +1283,11 @@
       if($("ocrConnote").value) $("connote").value = $("ocrConnote").value;
       if($("ocrReference").value) $("reference").value = $("ocrReference").value;
 
-      // Handle item row: populate Quantity, set Type and Weight
       const type = $("ocrItemType").value || "";
       const qty = $("ocrQty").value || 1;
       const weight = $("ocrWeight").value || "";
 
-      // Clear items and add one row with OCR data
+      // Replace items with one row from OCR
       $("itemsBody").innerHTML = "";
       const newRow = makeItemRow({type: type, qty: qty, weight: weight});
       $("itemsBody").appendChild(newRow);
@@ -1449,18 +1494,6 @@
 
     // --- EVENT BINDINGS ---
     $("chooseImageBtn").onclick = () => $("imageInput").click();
-    $("imageInput").onchange = function(e) {
-      const f = e.target.files[0];
-      if(!f) return;
-      const url = URL.createObjectURL(f);
-      selectedImage = url;
-      $("previewImg").src = url;
-      $("previewWrap").style.display = "block";
-      $("runOcrBtn").disabled = false;
-      $("ocrBadge").textContent = "Ready";
-      $("ocrBadge").className = "badge blue";
-      $("meterBar").style.width = "0%";
-    };
 
     $("nav").addEventListener("click", function(e) {
       const n = e.target.closest(".nav-item");
