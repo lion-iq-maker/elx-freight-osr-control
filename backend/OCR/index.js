@@ -80,11 +80,9 @@ module.exports = async function (context, req) {
         // 3. Poll Azure until analysis completes
         // ------------------------------------------------------------
         let analyzeResult = null;
-
         const maxAttempts = 30;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
-
             const pollResponse = await fetch(operationLocation, {
                 headers: {
                     'Ocp-Apim-Subscription-Key': key
@@ -114,9 +112,7 @@ module.exports = async function (context, req) {
                 );
             }
 
-            await new Promise(resolve =>
-                setTimeout(resolve, 1000)
-            );
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         if (!analyzeResult) {
@@ -125,22 +121,10 @@ module.exports = async function (context, req) {
             );
         }
 
-
         // ============================================================
-        // 4. OUR ELX FREIGHT FIELD DEFINITIONS
+        // 4. ELX FREIGHT FIELD DEFINITIONS
         // ============================================================
-        //
-        // IMPORTANT:
-        // These are ONLY aliases for fields we actually want.
-        //
-        // Avoid broad words such as:
-        // "from", "company", "type", "location", etc.
-        //
-        // Broad aliases cause false matches.
-        // ============================================================
-
         const fieldDefinitions = {
-
             supplier: [
                 'supplier',
                 'supplier sender',
@@ -216,191 +200,98 @@ module.exports = async function (context, req) {
             ]
         };
 
-
         // ============================================================
         // 5. NORMALISATION HELPERS
         // ============================================================
-
         function normalizeLabel(value) {
-
             if (!value) {
                 return '';
             }
 
             return String(value)
                 .toLowerCase()
-
-                // remove punctuation used in labels
                 .replace(/[*:#()[\]{}]/g, ' ')
-
-                // slash becomes space for label matching only
                 .replace(/\//g, ' ')
-
-                // collapse whitespace
                 .replace(/\s+/g, ' ')
-
                 .trim();
         }
 
-
         function cleanValue(value) {
-
             if (value === null || value === undefined) {
                 return '';
             }
 
             let result = String(value).trim();
 
-            // Remove leading separators ONLY.
-            //
-            // We deliberately DO NOT remove hyphens or slashes
-            // from inside the actual freight value.
-            //
-            // REF-CARR-1182 must remain REF-CARR-1182.
-            // ABC/123 must remain ABC/123.
-
-            result = result.replace(
-                /^[\s:|=*]+/,
-                ''
-            );
-
-            // Remove trailing label noise.
-            result = result.replace(
-                /[\s:*]+$/,
-                ''
-            );
-
-            result = result.replace(
-                /\s+/g,
-                ' '
-            );
+            // Remove only leading/trailing separator noise.
+            // Do NOT remove internal hyphens/slashes.
+            result = result.replace(/^[\s:|=*]+/, '');
+            result = result.replace(/[\s:*]+$/, '');
+            result = result.replace(/\s+/g, ' ');
 
             return result.trim();
         }
 
-
         function isValidValue(field, value) {
-
             const cleaned = cleanValue(value);
 
             if (!cleaned) {
                 return false;
             }
 
-            // --------------------------------------------------------
-            // Prevent labels accidentally becoming values
-            // --------------------------------------------------------
-
+            // Prevent labels from becoming values
             const normalizedValue = normalizeLabel(cleaned);
-
-            const allKnownLabels =
-                Object.values(fieldDefinitions).flat();
+            const allKnownLabels = Object.values(fieldDefinitions).flat();
 
             for (const knownLabel of allKnownLabels) {
+                const normalizedKnown = normalizeLabel(knownLabel);
 
-                const normalizedKnown =
-                    normalizeLabel(knownLabel);
-
-                if (
-                    normalizedValue === normalizedKnown
-                ) {
+                if (normalizedValue === normalizedKnown) {
                     return false;
                 }
             }
 
-
-            // --------------------------------------------------------
-            // Field-specific validation
-            // --------------------------------------------------------
-
             if (field === 'qty') {
-
-                // Quantity should normally contain a number.
                 return /^\d{1,6}$/.test(
                     cleaned.replace(/,/g, '')
                 );
             }
 
-
             if (field === 'weight') {
-
-                // Allows:
-                // 410
-                // 410.5
-                // 410 kg
-                // 1,250 kg
-
-                return /^\d[\d,.]*(\s*kg)?$/i.test(
-                    cleaned
-                );
+                return /^\d[\d,.]*(\s*kg)?$/i.test(cleaned);
             }
 
-
             if (field === 'po') {
-
-                // Avoid tiny accidental values such as "No".
                 return cleaned.length >= 3;
             }
 
-
-            if (field === 'supplier') {
+            if (
+                field === 'supplier' ||
+                field === 'site' ||
+                field === 'contractor' ||
+                field === 'reference' ||
+                field === 'connote' ||
+                field === 'itemType'
+            ) {
                 return cleaned.length >= 2;
             }
-
-
-            if (field === 'site') {
-                return cleaned.length >= 2;
-            }
-
-
-            if (field === 'contractor') {
-                return cleaned.length >= 2;
-            }
-
-
-            if (field === 'reference') {
-                return cleaned.length >= 2;
-            }
-
-
-            if (field === 'connote') {
-                return cleaned.length >= 2;
-            }
-
-
-            if (field === 'itemType') {
-                return cleaned.length >= 2;
-            }
-
 
             return true;
         }
 
-
         function labelsMatch(actualLabel, aliases) {
-
-            const actual =
-                normalizeLabel(actualLabel);
+            const actual = normalizeLabel(actualLabel);
 
             if (!actual) {
                 return false;
             }
 
             return aliases.some(alias => {
+                const expected = normalizeLabel(alias);
 
-                const expected =
-                    normalizeLabel(alias);
-
-                // Prefer exact matching.
                 if (actual === expected) {
                     return true;
                 }
-
-                // Allow modest variations such as:
-                // "PO Number *"
-                // "Supplier Sender"
-                //
-                // Do NOT match a single generic word anywhere.
 
                 if (
                     expected.length >= 5 &&
@@ -413,13 +304,17 @@ module.exports = async function (context, req) {
             });
         }
 
+        function escapeRegExp(value) {
+            return String(value).replace(
+                /[.*+?^${}()|[\]\\]/g,
+                '\\$&'
+            );
+        }
 
         // ============================================================
         // 6. RESULT OBJECT
         // ============================================================
-
         const extracted = {
-
             supplier: '',
             site: '',
             contractor: '',
@@ -430,10 +325,8 @@ module.exports = async function (context, req) {
             qty: '',
             weight: ''
         };
-
 
         const extractionSource = {
-
             supplier: '',
             site: '',
             contractor: '',
@@ -445,26 +338,16 @@ module.exports = async function (context, req) {
             weight: ''
         };
 
+        // Raw OCR text is useful for diagnostics and fallback parsing.
+        const rawText = analyzeResult.content || '';
 
         // ============================================================
-        // 7. STRATEGY ONE:
-        //    AZURE KEY / VALUE PAIRS
-        //
-        // This is our preferred extraction method.
-        //
-        // Example:
-        //
-        // key   = "PO Number"
-        // value = "4500998723"
-        //
+        // 7. STRATEGY ONE: AZURE KEY / VALUE PAIRS
         // ============================================================
-
         const keyValuePairs =
             analyzeResult.keyValuePairs || [];
 
-
         for (const pair of keyValuePairs) {
-
             const keyText =
                 pair.key?.content || '';
 
@@ -475,57 +358,35 @@ module.exports = async function (context, req) {
                 continue;
             }
 
-
             for (
                 const [field, aliases]
                 of Object.entries(fieldDefinitions)
             ) {
-
                 if (extracted[field]) {
                     continue;
                 }
 
-                if (
-                    labelsMatch(
-                        keyText,
-                        aliases
-                    )
-                ) {
+                if (labelsMatch(keyText, aliases)) {
+                    const cleaned = cleanValue(valueText);
 
-                    const cleaned =
-                        cleanValue(valueText);
-
-                    if (
-                        isValidValue(
-                            field,
-                            cleaned
-                        )
-                    ) {
-
-                        extracted[field] =
-                            cleaned;
-
-                        extractionSource[field] =
-                            'azure-key-value';
+                    if (isValidValue(field, cleaned)) {
+                        extracted[field] = cleaned;
+                        extractionSource[field] = 'azure-key-value';
                     }
                 }
             }
         }
 
-
         // ============================================================
         // 8. GET OCR LINES
         // ============================================================
-
         const pages =
             analyzeResult.pages || [];
 
         const lines = [];
 
         for (const page of pages) {
-
             for (const line of page.lines || []) {
-
                 const content =
                     cleanValue(line.content);
 
@@ -542,40 +403,26 @@ module.exports = async function (context, req) {
             }
         }
 
-
         // ============================================================
         // 9. SAME-LINE FALLBACK
-        //
-        // Examples Azure might return:
-        //
-        // PO Number: 4500998723
-        // Quantity 3
-        // Weight (kg): 410
-        //
         // ============================================================
-
         function extractSameLineValue(
             lineText,
             aliases
         ) {
-
             const original =
                 String(lineText).trim();
 
             const normalizedOriginal =
                 normalizeLabel(original);
 
-
-            // Longest aliases first.
             const sortedAliases =
                 [...aliases].sort(
                     (a, b) =>
                         b.length - a.length
                 );
 
-
             for (const alias of sortedAliases) {
-
                 const normalizedAlias =
                     normalizeLabel(alias);
 
@@ -587,11 +434,7 @@ module.exports = async function (context, req) {
                     continue;
                 }
 
-
-                // Try normal visible separators first.
-
                 const patterns = [
-
                     new RegExp(
                         '^\\s*' +
                         escapeRegExp(alias) +
@@ -607,9 +450,7 @@ module.exports = async function (context, req) {
                     )
                 ];
 
-
                 for (const pattern of patterns) {
-
                     const match =
                         original.match(pattern);
 
@@ -617,7 +458,6 @@ module.exports = async function (context, req) {
                         match &&
                         match[1]
                     ) {
-
                         const candidate =
                             cleanValue(match[1]);
 
@@ -631,23 +471,11 @@ module.exports = async function (context, req) {
             return '';
         }
 
-
-        function escapeRegExp(value) {
-
-            return String(value).replace(
-                /[.*+?^${}()|[\]\\]/g,
-                '\\$&'
-            );
-        }
-
-
         for (const line of lines) {
-
             for (
                 const [field, aliases]
                 of Object.entries(fieldDefinitions)
             ) {
-
                 if (extracted[field]) {
                     continue;
                 }
@@ -665,7 +493,6 @@ module.exports = async function (context, req) {
                         candidate
                     )
                 ) {
-
                     extracted[field] =
                         candidate;
 
@@ -675,24 +502,10 @@ module.exports = async function (context, req) {
             }
         }
 
-
         // ============================================================
         // 10. GEOMETRY FALLBACK
-        //
-        // If Azure sees:
-        //
-        // BHP Contractor Name       PO Number
-        // UGL                       4500998723
-        //
-        // reading-order "next line" is unreliable.
-        //
-        // Instead we use the OCR coordinates and look for the closest
-        // text physically BELOW the field label.
-        //
         // ============================================================
-
         function boundingBox(polygon) {
-
             if (
                 !polygon ||
                 polygon.length < 4
@@ -703,21 +516,14 @@ module.exports = async function (context, req) {
             const xs = [];
             const ys = [];
 
-            // Azure can return:
-            // [x1,y1,x2,y2,...]
-            //
-            // or objects depending on API representation.
-
             if (
                 typeof polygon[0] === 'number'
             ) {
-
                 for (
                     let i = 0;
                     i < polygon.length;
                     i += 2
                 ) {
-
                     xs.push(polygon[i]);
 
                     if (
@@ -728,30 +534,23 @@ module.exports = async function (context, req) {
                         );
                     }
                 }
-
             } else {
-
                 for (const point of polygon) {
-
                     if (
                         point.x !== undefined &&
                         point.y !== undefined
                     ) {
-
                         xs.push(point.x);
                         ys.push(point.y);
                     }
                 }
             }
 
-
             if (!xs.length || !ys.length) {
                 return null;
             }
 
-
             return {
-
                 left: Math.min(...xs),
                 right: Math.max(...xs),
                 top: Math.min(...ys),
@@ -771,9 +570,7 @@ module.exports = async function (context, req) {
             };
         }
 
-
         function looksLikeAnyLabel(text) {
-
             const normalized =
                 normalizeLabel(text);
 
@@ -781,13 +578,11 @@ module.exports = async function (context, req) {
                 return false;
             }
 
-
             return Object.values(
                 fieldDefinitions
             )
                 .flat()
                 .some(alias => {
-
                     const expected =
                         normalizeLabel(alias);
 
@@ -800,12 +595,10 @@ module.exports = async function (context, req) {
                 });
         }
 
-
         function findValueBelowLabel(
             labelLine,
             field
         ) {
-
             const labelBox =
                 boundingBox(
                     labelLine.polygon
@@ -815,16 +608,12 @@ module.exports = async function (context, req) {
                 return '';
             }
 
-
             const candidates = [];
 
-
             for (const candidate of lines) {
-
                 if (candidate === labelLine) {
                     continue;
                 }
-
 
                 if (
                     candidate.pageNumber !==
@@ -833,7 +622,6 @@ module.exports = async function (context, req) {
                     continue;
                 }
 
-
                 if (
                     looksLikeAnyLabel(
                         candidate.text
@@ -841,7 +629,6 @@ module.exports = async function (context, req) {
                 ) {
                     continue;
                 }
-
 
                 const candidateBox =
                     boundingBox(
@@ -852,12 +639,9 @@ module.exports = async function (context, req) {
                     continue;
                 }
 
-
-                // Candidate must be physically below label.
                 const verticalGap =
                     candidateBox.top -
                     labelBox.bottom;
-
 
                 if (
                     verticalGap < -0.02 ||
@@ -865,10 +649,6 @@ module.exports = async function (context, req) {
                 ) {
                     continue;
                 }
-
-
-                // Candidate should overlap horizontally
-                // with the field label column.
 
                 const overlapLeft =
                     Math.max(
@@ -889,14 +669,12 @@ module.exports = async function (context, req) {
                         overlapLeft
                     );
 
-
                 const labelWidth =
                     Math.max(
                         0.01,
                         labelBox.right -
                         labelBox.left
                     );
-
 
                 const candidateWidth =
                     Math.max(
@@ -905,7 +683,6 @@ module.exports = async function (context, req) {
                         candidateBox.left
                     );
 
-
                 const overlapRatio =
                     overlap /
                     Math.min(
@@ -913,16 +690,11 @@ module.exports = async function (context, req) {
                         candidateWidth
                     );
 
-
-                // Also allow candidate whose centre
-                // remains close to the label centre.
-
                 const horizontalDistance =
                     Math.abs(
                         candidateBox.centerX -
                         labelBox.centerX
                     );
-
 
                 if (
                     overlapRatio < 0.15 &&
@@ -931,12 +703,10 @@ module.exports = async function (context, req) {
                     continue;
                 }
 
-
                 const value =
                     cleanValue(
                         candidate.text
                     );
-
 
                 if (
                     !isValidValue(
@@ -947,8 +717,6 @@ module.exports = async function (context, req) {
                     continue;
                 }
 
-
-                // Lower score = better.
                 const score =
                     Math.max(
                         verticalGap,
@@ -956,36 +724,29 @@ module.exports = async function (context, req) {
                     ) +
                     horizontalDistance * 0.25;
 
-
                 candidates.push({
                     value,
                     score
                 });
             }
 
-
             candidates.sort(
                 (a, b) =>
                     a.score - b.score
             );
 
-
             return candidates[0]?.value || '';
         }
-
 
         for (
             const [field, aliases]
             of Object.entries(fieldDefinitions)
         ) {
-
             if (extracted[field]) {
                 continue;
             }
 
-
             for (const line of lines) {
-
                 if (
                     !labelsMatch(
                         line.text,
@@ -995,13 +756,11 @@ module.exports = async function (context, req) {
                     continue;
                 }
 
-
                 const candidate =
                     findValueBelowLabel(
                         line,
                         field
                     );
-
 
                 if (
                     candidate &&
@@ -1010,7 +769,6 @@ module.exports = async function (context, req) {
                         candidate
                     )
                 ) {
-
                     extracted[field] =
                         candidate;
 
@@ -1022,62 +780,151 @@ module.exports = async function (context, req) {
             }
         }
 
+        // ============================================================
+        // 11. FREIGHT ITEMS ROW FALLBACK
+        //
+        // Azure raw OCR example:
+        //
+        // Item Type Quantity Weight (kg) Stillage 3 410
+        //
+        // If Azure sees the table but does not return key/value pairs,
+        // parse this known freight row conservatively.
+        // ============================================================
+        if (
+            !extracted.itemType ||
+            !extracted.qty ||
+            !extracted.weight
+        ) {
+            const normalizedRaw =
+                rawText
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+            const freightMatch =
+                normalizedRaw.match(
+                    /item\s*type\s+quantity\s+weight\s*\(?kg\)?\s+([a-z][a-z\s-]*?)\s+(\d+)\s+(\d+(?:\.\d+)?)(?=\s|$)/i
+                );
+
+            if (freightMatch) {
+                const detectedItemType =
+                    freightMatch[1].trim();
+
+                const detectedQty =
+                    freightMatch[2].trim();
+
+                const detectedWeight =
+                    freightMatch[3].trim();
+
+                const allowedItemTypes = [
+                    'Carton',
+                    'Satchel',
+                    'Pallet',
+                    'Crate',
+                    'Basket',
+                    'Parcel',
+                    'Stillage',
+                    'IBC',
+                    'Loose Freight',
+                    'Other'
+                ];
+
+                const matchedItemType =
+                    allowedItemTypes.find(
+                        type =>
+                            type.toLowerCase() ===
+                            detectedItemType.toLowerCase()
+                    );
+
+                if (
+                    !extracted.itemType &&
+                    matchedItemType
+                ) {
+                    extracted.itemType =
+                        matchedItemType;
+
+                    extractionSource.itemType =
+                        'freight-row-fallback';
+                }
+
+                if (
+                    !extracted.qty &&
+                    /^\d+$/.test(detectedQty)
+                ) {
+                    extracted.qty =
+                        detectedQty;
+
+                    extractionSource.qty =
+                        'freight-row-fallback';
+                }
+
+                if (
+                    !extracted.weight &&
+                    /^\d+(?:\.\d+)?$/.test(
+                        detectedWeight
+                    )
+                ) {
+                    extracted.weight =
+                        detectedWeight;
+
+                    extractionSource.weight =
+                        'freight-row-fallback';
+                }
+            }
+        }
 
         // ============================================================
-        // 11. FINAL FIELD CLEAN-UP
+        // 12. FINAL FIELD CLEAN-UP
         // ============================================================
 
         if (extracted.weight) {
-
-            // Backend returns just the number
-            // when Azure gives "410 kg".
-
             extracted.weight =
                 extracted.weight
                     .replace(/\s*kg$/i, '')
                     .trim();
         }
 
-
         if (extracted.qty) {
-
             extracted.qty =
                 extracted.qty
                     .replace(/,/g, '')
                     .trim();
         }
 
+        // Fix OCR spacing around hyphens
+        //
+        // REF-CARR- 1182 -> REF-CARR-1182
+        // RXL - 660421   -> RXL-660421
+
+        for (const field of ['reference', 'connote']) {
+            if (extracted[field]) {
+                extracted[field] =
+                    extracted[field]
+                        .replace(/\s*-\s*/g, '-')
+                        .trim();
+            }
+        }
 
         // ============================================================
-        // 12. IMPORTANT BUSINESS RULE
+        // 13. IMPORTANT ELX BUSINESS RULE
         //
-        // Do NOT guess missing values.
+        // NEVER GUESS.
         //
-        // Blank means:
-        // "OCR could not confidently identify this field."
-        //
-        // User can manually enter it.
+        // If OCR cannot confidently identify a field,
+        // leave it blank so the warehouse user can review/fill it.
         // ============================================================
-
-
-        const rawText =
-            analyzeResult.content || '';
-
 
         context.log(
             'ELX OCR extraction:',
             extracted
         );
 
-
         context.log(
             'ELX OCR extraction source:',
             extractionSource
         );
 
-
         // ============================================================
-        // 13. RETURN RESULT TO FRONT END
+        // 14. RETURN RESULT TO FRONT END
         // ============================================================
 
         context.res = {
@@ -1088,23 +935,17 @@ module.exports = async function (context, req) {
             },
             body: JSON.stringify({
                 success: true,
-
                 extracted,
-
                 extractionSource,
-
                 rawText
             })
         };
 
-
     } catch (error) {
-
         context.log.error(
             'OCR error:',
             error
         );
-
 
         context.res = {
             status: 500,
