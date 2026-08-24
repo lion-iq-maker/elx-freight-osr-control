@@ -9,6 +9,7 @@
         content="default-src 'self'; connect-src 'self' https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline';">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
+    /* ... (all your existing CSS – unchanged) ... */
     :root {
       --elx-red: #d71920;
       --elx-red-dark: #ad1117;
@@ -644,7 +645,6 @@
           <h2 id="pageTitle">ELX Freight Control</h2>
           <p id="pageSubtitle">BHP freight visibility from supplier receipt to site delivery and invoice readiness.</p>
         </div>
-        <!-- Removed Scan Label button from header -->
       </section>
 
       <section class="kpi-grid" id="kpiSection"></section>
@@ -669,7 +669,6 @@
           <div class="panel fill">
             <div class="panel-head">
               <div><h3>Goods Received</h3><p>Supplier driver handover · manual entry or OCR-assisted label capture.</p></div>
-              <!-- Removed Scan Physical Label button -->
             </div>
             <div class="split-grid">
               <div class="upload-inline">
@@ -820,13 +819,14 @@
           </div>
         </div>
         <div>
+          <!-- UPDATED OCR FIELDS - Match main form -->
           <div class="field-grid">
-            <div class="field"><label>Supplier</label><input id="ocrSupplier"></div>
-            <div class="field"><label>PO Number</label><input id="ocrPo"></div>
-            <div class="field"><label>Destination Site</label><select id="ocrSite"><option value="">Unknown</option><option>BHP Olympic Dam</option><option>BHP Carrapateena</option><option>BHP Prominent Hill</option></select></div>
-            <div class="field"><label>Connote</label><input id="ocrConnote"></div>
-            <div class="field"><label>Reference</label><input id="ocrReference"></div>
-            <div class="field"><label>Quantity</label><input id="ocrQty"></div>
+            <div class="field"><label>Supplier / Sender</label><input id="ocrSupplier" placeholder="Extracted supplier"></div>
+            <div class="field"><label>Delivery Site</label><select id="ocrSite"><option value="">Select extracted site</option><option>BHP Olympic Dam</option><option>BHP Carrapateena</option><option>BHP Prominent Hill</option><option>Other / Unknown</option></select></div>
+            <div class="field"><label>PO Number</label><input id="ocrPo" placeholder="Extracted PO"></div>
+            <div class="field"><label>Other Reference(s)</label><input id="ocrReference" placeholder="Extracted reference"></div>
+            <div class="field"><label>Connote / Consignment</label><input id="ocrConnote" placeholder="Extracted connote"></div>
+            <div class="field"><label>Quantity (for first item)</label><input id="ocrQty" placeholder="Extracted quantity"></div>
           </div>
           <div class="confidence">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;"><strong>OCR Status</strong><span class="badge grey" id="ocrBadge">Waiting for image</span></div>
@@ -1179,10 +1179,21 @@
         const data = await ocrResponse.json();
         const extracted = data.extracted || {};
 
-        // Populate OCR modal fields
+        // Populate OCR modal fields (matches main form)
         $("ocrSupplier").value = extracted.supplier || '';
         $("ocrPo").value = extracted.po || '';
-        $("ocrSite").value = extracted.site || '';
+        // Map extracted.site to dropdown
+        const siteMap = {
+          'BHP Olympic Dam': 'BHP Olympic Dam',
+          'BHP Carrapateena': 'BHP Carrapateena',
+          'BHP Prominent Hill': 'BHP Prominent Hill'
+        };
+        const siteVal = extracted.site || '';
+        if (siteVal in siteMap) {
+          $("ocrSite").value = siteMap[siteVal];
+        } else {
+          $("ocrSite").value = ''; // Unknown, let user select
+        }
         $("ocrConnote").value = extracted.connote || '';
         $("ocrReference").value = extracted.reference || '';
         $("ocrQty").value = extracted.qty || '';
@@ -1209,6 +1220,7 @@
 
     // --- Use Extracted Fields ---
     $("useOcrBtn").onclick = ()=>{
+      // Map OCR fields to main form (one-to-one)
       if($("ocrSupplier").value) $("supplier").value = $("ocrSupplier").value;
       if($("ocrPo").value) $("po").value = $("ocrPo").value;
       if($("ocrSite").value) $("site").value = $("ocrSite").value;
