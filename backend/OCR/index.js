@@ -73,73 +73,94 @@ module.exports = async function (context, req) {
             throw new Error('Analysis timed out after 30 seconds.');
         }
 
-        // ========== SAFE EXTRACTION ==========
-        const allPairs = {};
+        // ========== NEW EXTRACTION LOGIC ==========
+        const rawText = result.content || '';
+        const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-        // 1. From keyValuePairs
-        if (result.keyValuePairs && Array.isArray(result.keyValuePairs)) {
-            for (const kv of result.keyValuePairs) {
-                const key = kv.key?.content ?? '';
-                const value = kv.value?.content ?? '';
-                if (key && value) {
-                    const normalized = key.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
-                    allPairs[normalized] = value;
-                }
-            }
-        }
+        const extracted = {
+            supplier: '',
+            po: '',
+            site: '',
+            contractor: '',
+            connote: '',
+            reference: '',
+            qty: '',
+            weight: '',
+            itemType: ''
+        };
 
-        // 2. From documents.fields
-        if (result.documents && Array.isArray(result.documents) && result.documents.length > 0) {
-            const doc = result.documents[0];
-            if (doc.fields) {
-                for (const [fieldKey, field] of Object.entries(doc.fields)) {
-                    const content = field?.content ?? '';
-                    if (fieldKey && content) {
-                        const normalized = fieldKey.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
-                        allPairs[normalized] = content;
+        // Define mapping: field -> array of possible key substrings (case-insensitive)
+        const keyMap = [
+            { field: 'supplier', keys: ['supplier', 'sender', 'vendor', 'from', 'shipper'] },
+            { field: 'po', keys: ['po number', 'purchase order', 'po', 'p/o'] },
+            { field: 'site', keys: ['delivery site', 'site', 'destination', 'location', 'consignee'] },
+            { field: 'contractor', keys: ['contractor', 'bhp contractor', 'company'] },
+            { field: 'connote', keys: ['connote', 'consignment', 'tracking', 'waybill'] },
+            { field: 'reference', keys: ['reference', 'ref', 'docket', 'booking'] },
+            { field: 'qty', keys: ['quantity', 'qty', 'items', 'pieces', 'pcs', 'cartons'] },
+            { field: 'weight', keys: ['weight', 'kg', 'gross weight', 'net weight'] },
+            { field: 'itemType', keys: ['item type', 'type', 'description', 'product'] }
+        ];
+
+        // Helper to extract value from a line given a key
+        const extractValue = (line, key) => {
+            // Try to find the key in the line (case-insensitive)
+            const lowerLine = line.toLowerCase();
+            const lowerKey = key.toLowerCase();
+            const idx = lowerLine.indexOf(lowerKey);
+            if (idx === -1) return null;
+            // Get the rest of the line after the key
+            let rest = line.substring(idx + key.length).trim();
+            // Remove leading delimiters like colon, dash, asterisk, slash
+            rest = rest.replace(/^[:#\-*\/\s]+/, '').trim();
+            return rest || null;
+        };
+
+        // First pass: look for key-value on the same line
+        for (const line of lines) {
+            for (const entry of keyMap) {
+                if (extracted[entry.field]) continue; // already found
+                for (const key of entry.keys) {
+                    if (line.toLowerCase().includes(key.toLowerCase())) {
+                        const val = extractValue(line, key);
+                        if (val) {
+                            extracted[entry.field] = val;
+                            break;
+                        }
                     }
                 }
             }
         }
 
-        // 3. Raw text fallback
-        const rawText = result.content || '';
-        // ✅ FIXED: safely handle match[1]
-        const fallbackExtract = (pattern) => {
-            if (!rawText) return '';
-            const regex = new RegExp(pattern + '\\s*[:#\\-]?\\s*(.*?)(?:\\n|$)', 'i');
-            const match = rawText.match(regex);
-            return (match && match[1]) ? match[1].trim() : '';
-        };
-
-        // 4. Map with synonyms
-        const map = {
-            supplier: ['supplier', 'vendor', 'sender', 'from', 'consignor', 'shipper', 'shipped by'],
-            po: ['po number', 'purchase order', 'po', 'p/o', 'order number'],
-            site: ['site', 'destination', 'delivery site', 'location', 'consignee', 'deliver to'],
-            contractor: ['contractor', 'bhp contractor', 'contractor name', 'company'],
-            connote: ['connote', 'consignment', 'tracking', 'tracking number', 'waybill', 'airway bill'],
-            reference: ['reference', 'ref', 'docket', 'booking', 'order ref', 'customer ref'],
-            qty: ['quantity', 'qty', 'items', 'pieces', 'pcs', 'cartons', 'unit count'],
-            weight: ['weight', 'kg', 'gross weight', 'net weight', 'mass'],
-            itemType: ['item type', 'type', 'description', 'product', 'goods description']
-        };
-
-        const extracted = {};
-        for (const [key, synonyms] of Object.entries(map)) {
-            let found = '';
-            for (const syn of synonyms) {
-                const normalized = syn.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
-                if (allPairs[normalized]) {
-                    found = allPairs[normalized];
-                    break;
+        // Second pass: if a field is still empty, look for key on one line and value on the next line
+        for (let i = 0; i < lines.length - 1; i++) {
+            const currentLine = lines[i];
+            const nextLine = lines[i + 1];
+            for (const entry of keyMap) {
+                if (extracted[entry.field]) continue;
+                for (const key of entry.keys) {
+                    if (currentLine.toLowerCase().includes(key.toLowerCase())) {
+                        // Check if the current line has no value (or value is just the key)
+                        const valOnSameLine = extractValue(currentLine, key);
+                        if (!valOnSameLine || valOnSameLine.length < 3) {
+                            // Use the next line as value if it looks like a value (not a key)
+                            const nextLower = nextLine.toLowerCase();
+                            const isNextLineKey = keyMap.some(e => e.keys.some(k => nextLower.includes(k.toLowerCase())));
+                            if (!isNextLineKey && nextLine.length > 1) {
+                                extracted[entry.field] = nextLine;
+                            }
+                        }
+                        break;
+                    }
                 }
             }
-            if (!found) {
-                const pattern = synonyms.join('|');
-                found = fallbackExtract(pattern);
+        }
+
+        // Clean up extracted values: remove common noise like trailing asterisks or slashes
+        for (const [field, value] of Object.entries(extracted)) {
+            if (value) {
+                extracted[field] = value.replace(/\s*[\/\*]+\s*$/, '').trim();
             }
-            extracted[key] = found || '';
         }
 
         extracted.rawText = rawText;
