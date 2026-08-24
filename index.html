@@ -938,7 +938,7 @@
     const DEFAULT_LOCATIONS = ["BHP Olympic Dam Cage","BHP Carrapateena Cage","BHP Prominent Hill Cage","Quarantine / Exception Area","General Receiving Area","Ready Dispatch Zone","Loaded / Outbound Bay"];
     let selectedId = null;
     let selectedImage = null;
-    let selectedFile = null;       // ← NEW: holds the actual File object
+    let selectedFile = null;       // holds the actual File object
     let activeLocationFilter = "";
 
     function seedRecord(id,supplier,po,site,location,status,qty,weight,user) {
@@ -1160,13 +1160,13 @@
       resetItems();
     }
 
-    // --- UPDATED: imageInput.onchange stores the file ---
+    // --- imageInput.onchange stores the file ---
     $("imageInput").onchange = function(e) {
       const f = e.target.files[0];
       if(!f) return;
-      selectedFile = f; // store actual file object
+      selectedFile = f;
       const url = URL.createObjectURL(f);
-      selectedImage = url; // keep for preview
+      selectedImage = url;
       $("previewImg").src = url;
       $("previewWrap").style.display = "block";
       $("runOcrBtn").disabled = false;
@@ -1175,7 +1175,7 @@
       $("meterBar").style.width = "0%";
     };
 
-    // --- UPDATED: runOcrBtn uses selectedFile directly, sends base64 ---
+    // --- runOcrBtn uses selectedFile, sends base64 ---
     $("runOcrBtn").onclick = async function() {
       if (!selectedFile) {
         showToast("No image selected");
@@ -1189,13 +1189,12 @@
         let file = selectedFile;
         let blob = file;
 
-        // Check if HEIC (by extension or MIME type)
+        // Check if HEIC
         const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
                        (file.name && file.name.toLowerCase().match(/\.heic$/));
 
         let finalBlob = blob;
 
-        // Convert HEIC if needed and library available
         if (isHeic && window.heic2any) {
           try {
             const jpegBlob = await window.heic2any({
@@ -1207,7 +1206,6 @@
             showToast("HEIC converted to JPEG");
           } catch (convError) {
             console.warn('HEIC conversion failed:', convError);
-            // fallback to original
             finalBlob = blob;
           }
         }
@@ -1236,22 +1234,22 @@
         const extracted = data.extracted || {};
 
         // Populate OCR modal fields
-        $("ocrSupplier").value = extracted.supplier || '';
-        $("ocrPo").value = extracted.po || '';
+        document.getElementById('ocrSupplier').value = extracted.supplier || '';
+        document.getElementById('ocrPo').value = extracted.po || '';
         const siteMap = {
           'BHP Olympic Dam': 'BHP Olympic Dam',
           'BHP Carrapateena': 'BHP Carrapateena',
           'BHP Prominent Hill': 'BHP Prominent Hill'
         };
         const siteVal = extracted.site || '';
-        $("ocrSite").value = siteMap[siteVal] || '';
-        $("ocrContractor").value = extracted.contractor || '';
-        $("ocrConnote").value = extracted.connote || '';
-        $("ocrReference").value = extracted.reference || '';
-        $("ocrQty").value = extracted.qty || '';
-        $("ocrWeight").value = extracted.weight || '';
+        document.getElementById('ocrSite').value = siteMap[siteVal] || '';
+        document.getElementById('ocrContractor').value = extracted.contractor || '';
+        document.getElementById('ocrConnote').value = extracted.connote || '';
+        document.getElementById('ocrReference').value = extracted.reference || '';
+        document.getElementById('ocrQty').value = extracted.qty || '';
+        document.getElementById('ocrWeight').value = extracted.weight || '';
         if (extracted.itemType) {
-          $("ocrItemType").value = extracted.itemType;
+          document.getElementById('ocrItemType').value = extracted.itemType;
         }
 
         $("ocrBadge").textContent = "AI Extraction Complete";
@@ -1274,28 +1272,42 @@
       }
     };
 
-    // --- Use Extracted Fields ---
-    $("useOcrBtn").onclick = ()=>{
-      if($("ocrSupplier").value) $("supplier").value = $("ocrSupplier").value;
-      if($("ocrPo").value) $("po").value = $("ocrPo").value;
-      if($("ocrSite").value) $("site").value = $("ocrSite").value;
-      if($("ocrContractor").value) $("contractor").value = $("ocrContractor").value;
-      if($("ocrConnote").value) $("connote").value = $("ocrConnote").value;
-      if($("ocrReference").value) $("reference").value = $("ocrReference").value;
+    // --- Use Extracted Fields (direct DOM access + logs) ---
+    $("useOcrBtn").onclick = function() {
+        console.log("✅ Use Extracted Fields clicked");
 
-      const type = $("ocrItemType").value || "";
-      const qty = $("ocrQty").value || 1;
-      const weight = $("ocrWeight").value || "";
+        // Read OCR modal values
+        const supplier = document.getElementById('ocrSupplier')?.value || '';
+        const po = document.getElementById('ocrPo')?.value || '';
+        const site = document.getElementById('ocrSite')?.value || '';
+        const contractor = document.getElementById('ocrContractor')?.value || '';
+        const connote = document.getElementById('ocrConnote')?.value || '';
+        const reference = document.getElementById('ocrReference')?.value || '';
+        const itemType = document.getElementById('ocrItemType')?.value || '';
+        const qty = document.getElementById('ocrQty')?.value || 1;
+        const weight = document.getElementById('ocrWeight')?.value || '';
 
-      // Replace items with one row from OCR
-      $("itemsBody").innerHTML = "";
-      const newRow = makeItemRow({type: type, qty: qty, weight: weight});
-      $("itemsBody").appendChild(newRow);
+        console.log("📦 Extracted values:", { supplier, po, site, contractor, connote, reference, itemType, qty, weight });
 
-      updateItemSummary();
-      closeOcr();
-      setView("receive");
-      showToast("OCR fields pre-filled — review and confirm");
+        // Populate main form
+        if (supplier) document.getElementById('supplier').value = supplier;
+        if (po) document.getElementById('po').value = po;
+        if (site) document.getElementById('site').value = site;
+        if (contractor) document.getElementById('contractor').value = contractor;
+        if (connote) document.getElementById('connote').value = connote;
+        if (reference) document.getElementById('reference').value = reference;
+
+        // Update items table
+        const itemsBody = document.getElementById('itemsBody');
+        itemsBody.innerHTML = '';
+        const newRow = makeItemRow({ type: itemType, qty: qty, weight: weight });
+        itemsBody.appendChild(newRow);
+        updateItemSummary();
+
+        // Close modal and switch view
+        closeOcr();
+        setView('receive');
+        showToast('OCR fields pre-filled — review and confirm');
     };
 
     // --- Confirm Goods Received ---
