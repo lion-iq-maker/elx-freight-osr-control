@@ -1,315 +1,961 @@
-const sql = require('mssql');
-const crypto = require('crypto');
-
 module.exports = async function (context, req) {
-    const connectionString = process.env.SQL_CONNECTION_STRING;
-    if (!connectionString) {
+    const endpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
+    const key = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
+
+    if (!endpoint || !key) {
         context.res = {
             status: 500,
-            body: JSON.stringify({ error: 'SQL connection string missing' })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                error: 'Missing Azure AI Document Intelligence credentials'
+            })
         };
         return;
     }
 
-    // --- GET: list receipts with item summaries ---
-    if (req.method === 'GET') {
-        return handleGet(context, req, connectionString);
+    const body = req.body || {};
+    const imageBase64 = body.image;
+
+    if (!imageBase64) {
+        context.res = {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                error: 'No image provided. Send {"image":"base64string"}'
+            })
+        };
+        return;
     }
 
-    // --- POST: create a new receipt ---
-    if (req.method === 'POST') {
-        return handlePost(context, req, connectionString);
-    }
-
-    context.res = {
-        status: 405,
-        body: JSON.stringify({ error: 'Method not allowed' })
-    };
-};
-
-// ========== HANDLE GET ==========
-async function handleGet(context, req, connectionString) {
     try {
-        const pool = await sql.connect(connectionString);
+        // ------------------------------------------------------------
+        // 1. Convert image from Base64
+        // ------------------------------------------------------------
+        const cleanBase64 = imageBase64.includes(',')
+            ? imageBase64.split(',').pop()
+            : imageBase64;
 
-        const search = req.query.search || '';
-        const status = req.query.status || '';
-        const locationId = req.query.locationId || '';
-        const page = parseInt(req.query.page) || 1;
-        const pageSize = parseInt(req.query.pageSize) || 50;
-        const offset = (page - 1) * pageSize;
+        const imageBuffer = Buffer.from(cleanBase64, 'base64');
 
-        let baseQuery = `
-            SELECT
-                r.id,
-                r.gr_number AS grNumber,
-                r.supplier,
-                r.delivery_site AS site,
-                r.po_number AS po,
-                r.current_status AS status,
-                l.name AS location,
-                r.received_by_display_name AS receivedBy,
-                r.updated_at_utc AS updatedAt,
-                (
-                    SELECT STRING_AGG(CONCAT(item_type, ' x', quantity), ', ')
-                    FROM FreightItems fi
-                    WHERE fi.receipt_id = r.id
-                ) AS itemsSummary,
-                (
-                    SELECT SUM(quantity)
-                    FROM FreightItems fi
-                    WHERE fi.receipt_id = r.id
-                ) AS totalQty,
-                (
-                    SELECT SUM(weight_kg)
-                    FROM FreightItems fi
-                    WHERE fi.receipt_id = r.id
-                ) AS totalWeight
-            FROM FreightReceipts r
-            LEFT JOIN Locations l ON r.current_location_id = l.id
-            WHERE 1=1
-        `;
+        // ------------------------------------------------------------
+        // 2. Send image to Azure Document Intelligence
+        // ------------------------------------------------------------
+        const modelId = 'prebuilt-document';
+        const apiVersion = '2023-07-31';
 
-        const conditions = [];
-        const params = [];
+        const cleanEndpoint = endpoint.replace(/\/+$/, '');
 
-        if (search) {
-            conditions.push(`(
-                r.gr_number LIKE @search
-                OR r.supplier LIKE @search
-                OR r.po_number LIKE @search
-                OR r.delivery_site LIKE @search
-                OR r.connote LIKE @search
-                OR r.other_reference LIKE @search
-            )`);
-            params.push({ name: 'search', value: `%${search}%`, type: sql.NVarChar });
+        const analyzeUrl =
+            `${cleanEndpoint}/formrecognizer/documentModels/` +
+            `${modelId}:analyze?api-version=${apiVersion}`;
+
+        const response = await fetch(analyzeUrl, {
+            method: 'POST',
+            headers: {
+                'Ocp-Apim-Subscription-Key': key,
+                'Content-Type': 'application/octet-stream'
+            },
+            body: imageBuffer
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+                `Azure Document Intelligence error: ` +
+                `${response.status} - ${errorText}`
+            );
         }
 
-        if (status) {
-            conditions.push(`r.current_status = @status`);
-            params.push({ name: 'status', value: status, type: sql.NVarChar });
+        const operationLocation = response.headers.get('operation-location');
+
+        if (!operationLocation) {
+            throw new Error(
+                'Azure did not return an operation-location header.'
+            );
         }
 
-        if (locationId) {
-            conditions.push(`r.current_location_id = @locationId`);
-            params.push({ name: 'locationId', value: parseInt(locationId), type: sql.Int });
+        // ------------------------------------------------------------
+        // 3. Poll Azure until analysis completes
+        // ------------------------------------------------------------
+        let analyzeResult = null;
+        const maxAttempts = 30;
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const pollResponse = await fetch(operationLocation, {
+                headers: {
+                    'Ocp-Apim-Subscription-Key': key
+                }
+            });
+
+            if (!pollResponse.ok) {
+                const pollError = await pollResponse.text();
+                throw new Error(
+                    `Azure polling error: ` +
+                    `${pollResponse.status} - ${pollError}`
+                );
+            }
+
+            const pollData = await pollResponse.json();
+
+            if (pollData.status === 'succeeded') {
+                analyzeResult = pollData.analyzeResult;
+                break;
+            }
+
+            if (pollData.status === 'failed') {
+                throw new Error(
+                    pollData.error?.message ||
+                    'Azure document analysis failed.'
+                );
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        if (conditions.length > 0) {
-            baseQuery += ' AND ' + conditions.join(' AND ');
+        if (!analyzeResult) {
+            throw new Error(
+                'Document analysis timed out after 30 seconds.'
+            );
         }
 
-        const orderBy = `ORDER BY r.updated_at_utc DESC OFFSET ${offset} ROWS FETCH NEXT ${pageSize} ROWS ONLY`;
-        const query = baseQuery + ' ' + orderBy;
+        // ============================================================
+        // 4. ELX FREIGHT FIELD DEFINITIONS
+        // ============================================================
+        const fieldDefinitions = {
+            supplier: [
+                'supplier',
+                'supplier sender',
+                'supplier / sender',
+                'sender',
+                'vendor',
+                'shipper'
+            ],
 
-        const request = pool.request();
-        for (const p of params) {
-            request.input(p.name, p.type, p.value);
-        }
-        const result = await request.query(query);
+            site: [
+                'delivery site',
+                'delivery destination',
+                'destination',
+                'deliver to',
+                'ship to'
+            ],
 
-        // Total count for pagination
-        let countQuery = `
-            SELECT COUNT(*) AS total
-            FROM FreightReceipts r
-            WHERE 1=1
-        `;
-        if (conditions.length > 0) {
-            countQuery += ' AND ' + conditions.join(' AND ');
+            contractor: [
+                'bhp contractor name',
+                'bhp contractor',
+                'contractor name'
+            ],
+
+            po: [
+                'po number',
+                'po no',
+                'po #',
+                'p/o number',
+                'purchase order',
+                'purchase order number'
+            ],
+
+            reference: [
+                'other reference',
+                'other references',
+                'reference number',
+                'reference no',
+                'reference',
+                'ref number',
+                'ref no'
+            ],
+
+            connote: [
+                'connote / consignment',
+                'connote',
+                'consignment number',
+                'consignment no',
+                'consignment',
+                'tracking number',
+                'waybill'
+            ],
+
+            itemType: [
+                'item type',
+                'freight type',
+                'freight description',
+                'item description'
+            ],
+
+            qty: [
+                'quantity',
+                'qty',
+                'pieces',
+                'piece count'
+            ],
+
+            weight: [
+                'weight kg',
+                'weight (kg)',
+                'gross weight',
+                'gross weight kg',
+                'total weight'
+            ]
+        };
+
+        // ============================================================
+        // 5. NORMALISATION HELPERS
+        // ============================================================
+        function normalizeLabel(value) {
+            if (!value) {
+                return '';
+            }
+
+            return String(value)
+                .toLowerCase()
+                .replace(/[*:#()[\]{}]/g, ' ')
+                .replace(/\//g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
         }
-        const countRequest = pool.request();
-        for (const p of params) {
-            countRequest.input(p.name, p.type, p.value);
+
+        function cleanValue(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            let result = String(value).trim();
+
+            // Remove only leading/trailing separator noise.
+            // Do NOT remove internal hyphens/slashes.
+            result = result.replace(/^[\s:|=*]+/, '');
+            result = result.replace(/[\s:*]+$/, '');
+            result = result.replace(/\s+/g, ' ');
+
+            return result.trim();
         }
-        const countResult = await countRequest.query(countQuery);
-        const total = countResult.recordset[0].total;
+
+        function isValidValue(field, value) {
+            const cleaned = cleanValue(value);
+
+            if (!cleaned) {
+                return false;
+            }
+
+            // Prevent labels from becoming values
+            const normalizedValue = normalizeLabel(cleaned);
+            const allKnownLabels = Object.values(fieldDefinitions).flat();
+
+            for (const knownLabel of allKnownLabels) {
+                const normalizedKnown = normalizeLabel(knownLabel);
+
+                if (normalizedValue === normalizedKnown) {
+                    return false;
+                }
+            }
+
+            if (field === 'qty') {
+                return /^\d{1,6}$/.test(
+                    cleaned.replace(/,/g, '')
+                );
+            }
+
+            if (field === 'weight') {
+                return /^\d[\d,.]*(\s*kg)?$/i.test(cleaned);
+            }
+
+            if (field === 'po') {
+                return cleaned.length >= 3;
+            }
+
+            if (
+                field === 'supplier' ||
+                field === 'site' ||
+                field === 'contractor' ||
+                field === 'reference' ||
+                field === 'connote' ||
+                field === 'itemType'
+            ) {
+                return cleaned.length >= 2;
+            }
+
+            return true;
+        }
+
+        function labelsMatch(actualLabel, aliases) {
+            const actual = normalizeLabel(actualLabel);
+
+            if (!actual) {
+                return false;
+            }
+
+            return aliases.some(alias => {
+                const expected = normalizeLabel(alias);
+
+                if (actual === expected) {
+                    return true;
+                }
+
+                if (
+                    expected.length >= 5 &&
+                    actual.startsWith(expected + ' ')
+                ) {
+                    return true;
+                }
+
+                return false;
+            });
+        }
+
+        function escapeRegExp(value) {
+            return String(value).replace(
+                /[.*+?^${}()|[\]\\]/g,
+                '\\$&'
+            );
+        }
+
+        // ============================================================
+        // 6. RESULT OBJECT
+        // ============================================================
+        const extracted = {
+            supplier: '',
+            site: '',
+            contractor: '',
+            po: '',
+            reference: '',
+            connote: '',
+            itemType: '',
+            qty: '',
+            weight: ''
+        };
+
+        const extractionSource = {
+            supplier: '',
+            site: '',
+            contractor: '',
+            po: '',
+            reference: '',
+            connote: '',
+            itemType: '',
+            qty: '',
+            weight: ''
+        };
+
+        // Raw OCR text is useful for diagnostics and fallback parsing.
+        const rawText = analyzeResult.content || '';
+
+        // ============================================================
+        // 7. STRATEGY ONE: AZURE KEY / VALUE PAIRS
+        // ============================================================
+        const keyValuePairs =
+            analyzeResult.keyValuePairs || [];
+
+        for (const pair of keyValuePairs) {
+            const keyText =
+                pair.key?.content || '';
+
+            const valueText =
+                pair.value?.content || '';
+
+            if (!keyText || !valueText) {
+                continue;
+            }
+
+            for (
+                const [field, aliases]
+                of Object.entries(fieldDefinitions)
+            ) {
+                if (extracted[field]) {
+                    continue;
+                }
+
+                if (labelsMatch(keyText, aliases)) {
+                    const cleaned = cleanValue(valueText);
+
+                    if (isValidValue(field, cleaned)) {
+                        extracted[field] = cleaned;
+                        extractionSource[field] = 'azure-key-value';
+                    }
+                }
+            }
+        }
+
+        // ============================================================
+        // 8. GET OCR LINES
+        // ============================================================
+        const pages =
+            analyzeResult.pages || [];
+
+        const lines = [];
+
+        for (const page of pages) {
+            for (const line of page.lines || []) {
+                const content =
+                    cleanValue(line.content);
+
+                if (!content) {
+                    continue;
+                }
+
+                lines.push({
+                    text: content,
+                    polygon: line.polygon || [],
+                    pageNumber:
+                        page.pageNumber || 1
+                });
+            }
+        }
+
+        // ============================================================
+        // 9. SAME-LINE FALLBACK
+        // ============================================================
+        function extractSameLineValue(
+            lineText,
+            aliases
+        ) {
+            const original =
+                String(lineText).trim();
+
+            const normalizedOriginal =
+                normalizeLabel(original);
+
+            const sortedAliases =
+                [...aliases].sort(
+                    (a, b) =>
+                        b.length - a.length
+                );
+
+            for (const alias of sortedAliases) {
+                const normalizedAlias =
+                    normalizeLabel(alias);
+
+                if (
+                    !normalizedOriginal.startsWith(
+                        normalizedAlias
+                    )
+                ) {
+                    continue;
+                }
+
+                const patterns = [
+                    new RegExp(
+                        '^\\s*' +
+                        escapeRegExp(alias) +
+                        '\\s*[:|=]\\s*(.+)$',
+                        'i'
+                    ),
+
+                    new RegExp(
+                        '^\\s*' +
+                        escapeRegExp(alias) +
+                        '\\s+(.+)$',
+                        'i'
+                    )
+                ];
+
+                for (const pattern of patterns) {
+                    const match =
+                        original.match(pattern);
+
+                    if (
+                        match &&
+                        match[1]
+                    ) {
+                        const candidate =
+                            cleanValue(match[1]);
+
+                        if (candidate) {
+                            return candidate;
+                        }
+                    }
+                }
+            }
+
+            return '';
+        }
+
+        for (const line of lines) {
+            for (
+                const [field, aliases]
+                of Object.entries(fieldDefinitions)
+            ) {
+                if (extracted[field]) {
+                    continue;
+                }
+
+                const candidate =
+                    extractSameLineValue(
+                        line.text,
+                        aliases
+                    );
+
+                if (
+                    candidate &&
+                    isValidValue(
+                        field,
+                        candidate
+                    )
+                ) {
+                    extracted[field] =
+                        candidate;
+
+                    extractionSource[field] =
+                        'same-line';
+                }
+            }
+        }
+
+        // ============================================================
+        // 10. GEOMETRY FALLBACK
+        // ============================================================
+        function boundingBox(polygon) {
+            if (
+                !polygon ||
+                polygon.length < 4
+            ) {
+                return null;
+            }
+
+            const xs = [];
+            const ys = [];
+
+            if (
+                typeof polygon[0] === 'number'
+            ) {
+                for (
+                    let i = 0;
+                    i < polygon.length;
+                    i += 2
+                ) {
+                    xs.push(polygon[i]);
+
+                    if (
+                        polygon[i + 1] !== undefined
+                    ) {
+                        ys.push(
+                            polygon[i + 1]
+                        );
+                    }
+                }
+            } else {
+                for (const point of polygon) {
+                    if (
+                        point.x !== undefined &&
+                        point.y !== undefined
+                    ) {
+                        xs.push(point.x);
+                        ys.push(point.y);
+                    }
+                }
+            }
+
+            if (!xs.length || !ys.length) {
+                return null;
+            }
+
+            return {
+                left: Math.min(...xs),
+                right: Math.max(...xs),
+                top: Math.min(...ys),
+                bottom: Math.max(...ys),
+
+                centerX:
+                    (
+                        Math.min(...xs) +
+                        Math.max(...xs)
+                    ) / 2,
+
+                centerY:
+                    (
+                        Math.min(...ys) +
+                        Math.max(...ys)
+                    ) / 2
+            };
+        }
+
+        function looksLikeAnyLabel(text) {
+            const normalized =
+                normalizeLabel(text);
+
+            if (!normalized) {
+                return false;
+            }
+
+            return Object.values(
+                fieldDefinitions
+            )
+                .flat()
+                .some(alias => {
+                    const expected =
+                        normalizeLabel(alias);
+
+                    return (
+                        normalized === expected ||
+                        normalized.startsWith(
+                            expected + ' '
+                        )
+                    );
+                });
+        }
+
+        function findValueBelowLabel(
+            labelLine,
+            field
+        ) {
+            const labelBox =
+                boundingBox(
+                    labelLine.polygon
+                );
+
+            if (!labelBox) {
+                return '';
+            }
+
+            const candidates = [];
+
+            for (const candidate of lines) {
+                if (candidate === labelLine) {
+                    continue;
+                }
+
+                if (
+                    candidate.pageNumber !==
+                    labelLine.pageNumber
+                ) {
+                    continue;
+                }
+
+                if (
+                    looksLikeAnyLabel(
+                        candidate.text
+                    )
+                ) {
+                    continue;
+                }
+
+                const candidateBox =
+                    boundingBox(
+                        candidate.polygon
+                    );
+
+                if (!candidateBox) {
+                    continue;
+                }
+
+                const verticalGap =
+                    candidateBox.top -
+                    labelBox.bottom;
+
+                if (
+                    verticalGap < -0.02 ||
+                    verticalGap > 1.50
+                ) {
+                    continue;
+                }
+
+                const overlapLeft =
+                    Math.max(
+                        labelBox.left,
+                        candidateBox.left
+                    );
+
+                const overlapRight =
+                    Math.min(
+                        labelBox.right,
+                        candidateBox.right
+                    );
+
+                const overlap =
+                    Math.max(
+                        0,
+                        overlapRight -
+                        overlapLeft
+                    );
+
+                const labelWidth =
+                    Math.max(
+                        0.01,
+                        labelBox.right -
+                        labelBox.left
+                    );
+
+                const candidateWidth =
+                    Math.max(
+                        0.01,
+                        candidateBox.right -
+                        candidateBox.left
+                    );
+
+                const overlapRatio =
+                    overlap /
+                    Math.min(
+                        labelWidth,
+                        candidateWidth
+                    );
+
+                const horizontalDistance =
+                    Math.abs(
+                        candidateBox.centerX -
+                        labelBox.centerX
+                    );
+
+                if (
+                    overlapRatio < 0.15 &&
+                    horizontalDistance > 1.2
+                ) {
+                    continue;
+                }
+
+                const value =
+                    cleanValue(
+                        candidate.text
+                    );
+
+                if (
+                    !isValidValue(
+                        field,
+                        value
+                    )
+                ) {
+                    continue;
+                }
+
+                const score =
+                    Math.max(
+                        verticalGap,
+                        0
+                    ) +
+                    horizontalDistance * 0.25;
+
+                candidates.push({
+                    value,
+                    score
+                });
+            }
+
+            candidates.sort(
+                (a, b) =>
+                    a.score - b.score
+            );
+
+            return candidates[0]?.value || '';
+        }
+
+        for (
+            const [field, aliases]
+            of Object.entries(fieldDefinitions)
+        ) {
+            if (extracted[field]) {
+                continue;
+            }
+
+            for (const line of lines) {
+                if (
+                    !labelsMatch(
+                        line.text,
+                        aliases
+                    )
+                ) {
+                    continue;
+                }
+
+                const candidate =
+                    findValueBelowLabel(
+                        line,
+                        field
+                    );
+
+                if (
+                    candidate &&
+                    isValidValue(
+                        field,
+                        candidate
+                    )
+                ) {
+                    extracted[field] =
+                        candidate;
+
+                    extractionSource[field] =
+                        'geometry-below-label';
+
+                    break;
+                }
+            }
+        }
+
+        // ============================================================
+        // 11. FREIGHT ITEMS ROW FALLBACK
+        //
+        // Azure raw OCR example:
+        //
+        // Item Type Quantity Weight (kg) Stillage 3 410
+        //
+        // If Azure sees the table but does not return key/value pairs,
+        // parse this known freight row conservatively.
+        // ============================================================
+        if (
+            !extracted.itemType ||
+            !extracted.qty ||
+            !extracted.weight
+        ) {
+            const normalizedRaw =
+                rawText
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+            const freightMatch =
+                normalizedRaw.match(
+                    /item\s*type\s+quantity\s+weight\s*\(?kg\)?\s+([a-z][a-z\s-]*?)\s+(\d+)\s+(\d+(?:\.\d+)?)(?=\s|$)/i
+                );
+
+            if (freightMatch) {
+                const detectedItemType =
+                    freightMatch[1].trim();
+
+                const detectedQty =
+                    freightMatch[2].trim();
+
+                const detectedWeight =
+                    freightMatch[3].trim();
+
+                const allowedItemTypes = [
+                    'Carton',
+                    'Satchel',
+                    'Pallet',
+                    'Crate',
+                    'Basket',
+                    'Parcel',
+                    'Stillage',
+                    'IBC',
+                    'Loose Freight',
+                    'Other'
+                ];
+
+                const matchedItemType =
+                    allowedItemTypes.find(
+                        type =>
+                            type.toLowerCase() ===
+                            detectedItemType.toLowerCase()
+                    );
+
+                if (
+                    !extracted.itemType &&
+                    matchedItemType
+                ) {
+                    extracted.itemType =
+                        matchedItemType;
+
+                    extractionSource.itemType =
+                        'freight-row-fallback';
+                }
+
+                if (
+                    !extracted.qty &&
+                    /^\d+$/.test(detectedQty)
+                ) {
+                    extracted.qty =
+                        detectedQty;
+
+                    extractionSource.qty =
+                        'freight-row-fallback';
+                }
+
+                if (
+                    !extracted.weight &&
+                    /^\d+(?:\.\d+)?$/.test(
+                        detectedWeight
+                    )
+                ) {
+                    extracted.weight =
+                        detectedWeight;
+
+                    extractionSource.weight =
+                        'freight-row-fallback';
+                }
+            }
+        }
+
+        // ============================================================
+        // 12. FINAL FIELD CLEAN-UP
+        // ============================================================
+
+        if (extracted.weight) {
+            extracted.weight =
+                extracted.weight
+                    .replace(/\s*kg$/i, '')
+                    .trim();
+        }
+
+        if (extracted.qty) {
+            extracted.qty =
+                extracted.qty
+                    .replace(/,/g, '')
+                    .trim();
+        }
+
+        // Fix OCR spacing around hyphens
+        //
+        // REF-CARR- 1182 -> REF-CARR-1182
+        // RXL - 660421   -> RXL-660421
+
+        for (const field of ['reference', 'connote']) {
+            if (extracted[field]) {
+                extracted[field] =
+                    extracted[field]
+                        .replace(/\s*-\s*/g, '-')
+                        .trim();
+            }
+        }
+
+        // ============================================================
+        // 13. IMPORTANT ELX BUSINESS RULE
+        //
+        // NEVER GUESS.
+        //
+        // If OCR cannot confidently identify a field,
+        // leave it blank so the warehouse user can review/fill it.
+        // ============================================================
+
+        context.log(
+            'ELX OCR extraction:',
+            extracted
+        );
+
+        context.log(
+            'ELX OCR extraction source:',
+            extractionSource
+        );
+
+        // ============================================================
+        // 14. RETURN RESULT TO FRONT END
+        // ============================================================
 
         context.res = {
             status: 200,
+            headers: {
+                'Content-Type':
+                    'application/json'
+            },
             body: JSON.stringify({
-                records: result.recordset,
-                total: total,
-                page: page,
-                pageSize: pageSize,
-                totalPages: Math.ceil(total / pageSize)
+                success: true,
+                extracted,
+                extractionSource,
+                rawText
             })
         };
 
     } catch (error) {
-        context.log.error('Error fetching receipts:', error);
+        context.log.error(
+            'OCR error:',
+            error
+        );
+
         context.res = {
             status: 500,
-            body: JSON.stringify({ error: error.message })
+            headers: {
+                'Content-Type':
+                    'application/json'
+            },
+            body: JSON.stringify({
+                success: false,
+                error:
+                    error.message ||
+                    'Unknown OCR error'
+            })
         };
     }
-}
-
-// ========== HANDLE POST (your existing logic, unchanged) ==========
-async function handlePost(context, req, connectionString) {
-    const body = req.body || {};
-    const required = ['supplier', 'site', 'receivedBy'];
-    const missing = required.filter(f => !body[f]);
-    if (missing.length) {
-        context.res = {
-            status: 400,
-            body: JSON.stringify({ error: `Missing required fields: ${missing.join(', ')}` })
-        };
-        return;
-    }
-
-    if (!Array.isArray(body.items) || body.items.length === 0) {
-        context.res = {
-            status: 400,
-            body: JSON.stringify({ error: 'At least one freight item is required' })
-        };
-        return;
-    }
-
-    try {
-        const pool = await sql.connect(connectionString);
-        const transaction = new sql.Transaction(pool);
-        await transaction.begin();
-
-        try {
-            const grDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-            const countResult = await transaction.request().query(
-                `SELECT COUNT(*) AS count FROM FreightReceipts WHERE gr_number LIKE 'ELX-GR-${grDate}-%'`
-            );
-            const sequence = String(Number(countResult.recordset[0].count) + 1).padStart(5, '0');
-            const grNumber = `ELX-GR-${grDate}-${sequence}`;
-
-            let locationId = null;
-            if (body.location) {
-                const locationResult = await transaction.request()
-                    .input('locationName', sql.NVarChar, body.location)
-                    .query(`SELECT id FROM Locations WHERE name = @locationName`);
-                if (locationResult.recordset.length === 0) {
-                    throw new Error(`Location "${body.location}" not found`);
-                }
-                locationId = locationResult.recordset[0].id;
-            }
-
-            const staffResult = await transaction.request()
-                .input('displayName', sql.NVarChar, body.receivedBy)
-                .query(`SELECT id FROM Staff WHERE display_name = @displayName`);
-            if (staffResult.recordset.length === 0) {
-                throw new Error(`Staff member "${body.receivedBy}" not found`);
-            }
-            const userId = staffResult.recordset[0].id;
-
-            const now = new Date().toISOString();
-            const receiptResult = await transaction.request()
-                .input('grNumber', sql.NVarChar, grNumber)
-                .input('supplier', sql.NVarChar, body.supplier)
-                .input('site', sql.NVarChar, body.site)
-                .input('contractor', sql.NVarChar, body.contractor || null)
-                .input('po', sql.NVarChar, body.po || null)
-                .input('reference', sql.NVarChar, body.reference || null)
-                .input('connote', sql.NVarChar, body.connote || null)
-                .input('notes', sql.NVarChar, body.notes || null)
-                .input('status', sql.NVarChar, 'Goods Received')
-                .input('locationId', sql.Int, locationId)
-                .input('userId', sql.Int, userId)
-                .input('displayName', sql.NVarChar, body.receivedBy)
-                .input('receivedAt', sql.DateTime2, now)
-                .query(`
-                    INSERT INTO FreightReceipts (
-                        gr_number, supplier, delivery_site, bhp_contractor_name,
-                        po_number, other_reference, connote, notes,
-                        current_status, current_location_id,
-                        received_by_user_id, received_by_display_name, received_at_utc
-                    )
-                    OUTPUT INSERTED.id
-                    VALUES (
-                        @grNumber, @supplier, @site, @contractor,
-                        @po, @reference, @connote, @notes,
-                        @status, @locationId,
-                        @userId, @displayName, @receivedAt
-                    )
-                `);
-            const receiptId = receiptResult.recordset[0].id;
-
-            for (const item of body.items) {
-                await transaction.request()
-                    .input('receiptId', sql.BigInt, receiptId)
-                    .input('itemType', sql.NVarChar, item.type || 'Other')
-                    .input('quantity', sql.Int, Number(item.qty) || 1)
-                    .input('weight', sql.Decimal(10,2), Number(item.weight) || 0)
-                    .query(`
-                        INSERT INTO FreightItems (receipt_id, item_type, quantity, weight_kg)
-                        VALUES (@receiptId, @itemType, @quantity, @weight)
-                    `);
-            }
-
-            await transaction.request()
-                .input('receiptId', sql.BigInt, receiptId)
-                .input('eventType', sql.NVarChar, 'GOODS_RECEIVED')
-                .input('newStatus', sql.NVarChar, 'Goods Received')
-                .input('newLocationId', sql.Int, locationId)
-                .input('userId', sql.Int, userId)
-                .input('displayName', sql.NVarChar, body.receivedBy)
-                .input('performedAt', sql.DateTime2, now)
-                .input('note', sql.NVarChar, 'Supplier freight received at ELX Largs North depot')
-                .query(`
-                    INSERT INTO LifecycleEvents (
-                        receipt_id, event_type,
-                        previous_status, new_status,
-                        previous_location_id, new_location_id,
-                        performed_by_user_id, performed_by_display_name,
-                        performed_at_utc, note
-                    )
-                    VALUES (
-                        @receiptId, @eventType,
-                        NULL, @newStatus,
-                        NULL, @newLocationId,
-                        @userId, @displayName,
-                        @performedAt, @note
-                    )
-                `);
-
-            const rawToken = crypto.randomBytes(32).toString('hex');
-            const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-
-            await transaction.request()
-                .input('receiptId', sql.BigInt, receiptId)
-                .input('tokenHash', sql.Char(64), tokenHash)
-                .query(`
-                    INSERT INTO PublicReceiptTokens (receipt_id, token_hash)
-                    VALUES (@receiptId, @tokenHash)
-                `);
-
-            await transaction.commit();
-
-            const publicUrl = `${process.env.PUBLIC_RECEIPT_BASE_URL || 'https://receipt.energylogistix.com.au/r'}/${rawToken}`;
-
-            context.res = {
-                status: 201,
-                body: JSON.stringify({
-                    grNumber: grNumber,
-                    receiptId: receiptId,
-                    supplier: body.supplier,
-                    site: body.site,
-                    location: body.location || null,
-                    receivedBy: body.receivedBy,
-                    receivedAt: now,
-                    itemCount: body.items.length,
-                    totalQty: body.items.reduce((a, i) => a + Number(i.qty || 0), 0),
-                    totalWeight: body.items.reduce((a, i) => a + Number(i.weight || 0), 0),
-                    receiptUrl: publicUrl,
-                    token: rawToken
-                })
-            };
-
-        } catch (error) {
-            await transaction.rollback();
-            throw error;
-        }
-
-    } catch (error) {
-        context.log.error('Error creating receipt:', error);
-        context.res = {
-            status: 500,
-            body: JSON.stringify({ error: error.message })
-        };
-    }
-}
+};
