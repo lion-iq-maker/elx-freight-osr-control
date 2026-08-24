@@ -819,15 +819,24 @@
           </div>
         </div>
         <div>
-          <!-- UPDATED OCR FIELDS - Match main form -->
+          <!-- UPDATED OCR FIELDS - Match main form with Contractor and item row -->
           <div class="field-grid">
             <div class="field"><label>Supplier / Sender</label><input id="ocrSupplier" placeholder="Extracted supplier"></div>
             <div class="field"><label>Delivery Site</label><select id="ocrSite"><option value="">Select extracted site</option><option>BHP Olympic Dam</option><option>BHP Carrapateena</option><option>BHP Prominent Hill</option><option>Other / Unknown</option></select></div>
+            <div class="field"><label>BHP Contractor Name</label><input id="ocrContractor" placeholder="Extracted contractor"></div>
             <div class="field"><label>PO Number</label><input id="ocrPo" placeholder="Extracted PO"></div>
             <div class="field"><label>Other Reference(s)</label><input id="ocrReference" placeholder="Extracted reference"></div>
             <div class="field"><label>Connote / Consignment</label><input id="ocrConnote" placeholder="Extracted connote"></div>
-            <div class="field"><label>Quantity (for first item)</label><input id="ocrQty" placeholder="Extracted quantity"></div>
           </div>
+
+          <!-- Freight Item row with three empty fields -->
+          <div style="margin-top:12px;font-weight:900;font-size:12px;">Freight Item (OCR will fill Quantity)</div>
+          <div class="field-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div class="field"><label>Item Type</label><select id="ocrItemType"><option value="">Select type</option><option>Carton</option><option>Satchel</option><option>Pallet</option><option>Crate</option><option>Basket</option><option>Parcel</option><option>Stillage</option><option>IBC</option><option>Loose Freight</option><option>Other</option></select></div>
+            <div class="field"><label>Quantity</label><input id="ocrQty" placeholder="Extracted quantity"></div>
+            <div class="field"><label>Weight (kg)</label><input id="ocrWeight" placeholder="Extracted weight"></div>
+          </div>
+
           <div class="confidence">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;"><strong>OCR Status</strong><span class="badge grey" id="ocrBadge">Waiting for image</span></div>
             <div class="meter"><span id="meterBar" style="width:0%"></span></div>
@@ -1113,7 +1122,7 @@
     }
 
     // --- ITEMS MANAGEMENT ---
-    function makeItemRow(data={type:"Pallet",qty:1,weight:""}) {
+    function makeItemRow(data={type:"",qty:1,weight:""}) {
       const tr=document.createElement("tr");
       tr.innerHTML=`<td><div class="field"><label>Item Type</label><select class="itemType">${["Carton","Satchel","Pallet","Crate","Basket","Parcel","Stillage","IBC","Loose Freight","Other"].map(x=>`<option${x===data.type?" selected":""}>${x}</option>`).join("")}</select></div></td><td><div class="field"><label>Quantity</label><input class="itemQty" type="number" min="1" value="${data.qty}"></div></td><td><div class="field"><label>Weight (kg)</label><input class="itemWeight" type="number" min="0" step="0.1" value="${data.weight}"></div></td><td><button class="remove-line removeItem" type="button">×</button></td>`;
       return tr;
@@ -1179,24 +1188,24 @@
         const data = await ocrResponse.json();
         const extracted = data.extracted || {};
 
-        // Populate OCR modal fields (matches main form)
+        // Populate OCR modal fields
         $("ocrSupplier").value = extracted.supplier || '';
         $("ocrPo").value = extracted.po || '';
-        // Map extracted.site to dropdown
         const siteMap = {
           'BHP Olympic Dam': 'BHP Olympic Dam',
           'BHP Carrapateena': 'BHP Carrapateena',
           'BHP Prominent Hill': 'BHP Prominent Hill'
         };
         const siteVal = extracted.site || '';
-        if (siteVal in siteMap) {
-          $("ocrSite").value = siteMap[siteVal];
-        } else {
-          $("ocrSite").value = ''; // Unknown, let user select
-        }
+        $("ocrSite").value = siteMap[siteVal] || '';
+        $("ocrContractor").value = extracted.contractor || '';
         $("ocrConnote").value = extracted.connote || '';
         $("ocrReference").value = extracted.reference || '';
         $("ocrQty").value = extracted.qty || '';
+        $("ocrWeight").value = extracted.weight || '';
+        if (extracted.itemType) {
+          $("ocrItemType").value = extracted.itemType;
+        }
 
         $("ocrBadge").textContent = "AI Extraction Complete";
         $("ocrBadge").className = "badge green";
@@ -1220,16 +1229,24 @@
 
     // --- Use Extracted Fields ---
     $("useOcrBtn").onclick = ()=>{
-      // Map OCR fields to main form (one-to-one)
+      // Map OCR fields to main form
       if($("ocrSupplier").value) $("supplier").value = $("ocrSupplier").value;
       if($("ocrPo").value) $("po").value = $("ocrPo").value;
       if($("ocrSite").value) $("site").value = $("ocrSite").value;
+      if($("ocrContractor").value) $("contractor").value = $("ocrContractor").value;
       if($("ocrConnote").value) $("connote").value = $("ocrConnote").value;
       if($("ocrReference").value) $("reference").value = $("ocrReference").value;
-      if($("ocrQty").value) {
-        const q = document.querySelector(".itemQty");
-        if(q) q.value = $("ocrQty").value;
-      }
+
+      // Handle item row: populate Quantity, set Type and Weight
+      const type = $("ocrItemType").value || "";
+      const qty = $("ocrQty").value || 1;
+      const weight = $("ocrWeight").value || "";
+
+      // Clear items and add one row with OCR data
+      $("itemsBody").innerHTML = "";
+      const newRow = makeItemRow({type: type, qty: qty, weight: weight});
+      $("itemsBody").appendChild(newRow);
+
       updateItemSummary();
       closeOcr();
       setView("receive");
