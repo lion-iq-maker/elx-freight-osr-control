@@ -503,31 +503,39 @@
     }
 
     // ========== ITEMS MANAGEMENT ==========
-    function makeItemRow(data={type:"",qty:1,weight:""}) {
-      const tr=document.createElement("tr");
-      tr.innerHTML=`<td><div class="field"><label>Item Type</label><select class="itemType">${["Carton","Satchel","Pallet","Crate","Basket","Parcel","Stillage","IBC","Loose Freight","Other"].map(x=>`<option${x===data.type?" selected":""}>${x}</option>`).join("")}</select></div></td><td><div class="field"><label>Quantity</label><input class="itemQty" type="number" min="1" value="${data.qty}"></div></td><td><div class="field"><label>Weight (kg)</label><input class="itemWeight" type="number" min="0" step="0.1" value="${data.weight}"></div></td><td><button class="remove-line removeItem" type="button">×</button></td>`;
+    function makeItemRow(data = { type: "", qty: "", weight: "" }) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><div class="field"><label>Item Type</label><select class="itemType"><option value="">Select type</option>${["Carton","Satchel","Pallet","Crate","Basket","Parcel","Stillage","IBC","Loose Freight","Other"].map(x=>`<option value="${x}"${x===data.type?" selected":""}>${x}</option>`).join("")}</select></div></td>
+        <td><div class="field"><label>Quantity</label><input class="itemQty" type="number" min="1" value="${data.qty ?? ""}" placeholder="Quantity"></div></td>
+        <td><div class="field"><label>Weight (kg)</label><input class="itemWeight" type="number" min="0" step="0.1" value="${data.weight ?? ""}" placeholder="Weight"></div></td>
+        <td><button class="remove-line removeItem" type="button">×</button></td>`;
       return tr;
     }
 
     function resetItems() {
-      $("itemsBody").innerHTML="";
-      $("itemsBody").appendChild(makeItemRow({type:"",qty:1,weight:""}));
+      $("itemsBody").innerHTML = "";
+      $("itemsBody").appendChild(makeItemRow({ type: "", qty: "", weight: "" }));
       updateItemSummary();
     }
 
     function updateItemSummary() {
-      const rows=[...document.querySelectorAll("#itemsBody tr")];
-      $("sumLines").textContent=rows.length;
-      $("sumQty").textContent=rows.reduce((a,r)=>a+(Number(r.querySelector(".itemQty").value)||0),0);
-      const w=rows.reduce((a,r)=>a+(Number(r.querySelector(".itemWeight").value)||0),0);
-      $("sumWeight").textContent=(w%1?w.toFixed(1):w)+" kg";
+      const rows = [...document.querySelectorAll("#itemsBody tr")];
+      $("sumLines").textContent = rows.length;
+      $("sumQty").textContent = rows.reduce((a,r)=>a+(Number(r.querySelector(".itemQty").value)||0),0);
+      const w = rows.reduce((a,r)=>a+(Number(r.querySelector(".itemWeight").value)||0),0);
+      $("sumWeight").textContent = (w%1?w.toFixed(1):w)+" kg";
     }
 
-    $("addItemBtn").onclick=()=>{ $("itemsBody").appendChild(makeItemRow({type:"",qty:1,weight:""})); updateItemSummary(); };
-    $("itemsBody").addEventListener("input",updateItemSummary);
-    $("itemsBody").addEventListener("click",e=>{
-      const b=e.target.closest(".removeItem");
-      if(b && document.querySelectorAll("#itemsBody tr").length>1) {
+    $("addItemBtn").onclick = () => {
+      $("itemsBody").appendChild(makeItemRow({ type: "", qty: "", weight: "" }));
+      updateItemSummary();
+    };
+    $("itemsBody").addEventListener("input", updateItemSummary);
+    $("itemsBody").addEventListener("change", updateItemSummary);
+    $("itemsBody").addEventListener("click", e => {
+      const b = e.target.closest(".removeItem");
+      if (b && document.querySelectorAll("#itemsBody tr").length > 1) {
         b.closest("tr").remove();
         updateItemSummary();
       }
@@ -555,7 +563,7 @@
       $("meterBar").style.width = "0%";
     };
 
-    // ========== RUN OCR (with full Azure response log) ==========
+    // ========== RUN OCR ==========
     $("runOcrBtn").onclick = async function() {
       if (!selectedFile) {
         showToast("No image selected");
@@ -564,131 +572,136 @@
 
       $("runOcrBtn").disabled = true;
       $("runOcrBtn").textContent = "Processing...";
+      $("ocrBadge").textContent = "Processing";
+      $("ocrBadge").className = "badge blue";
+      $("ocrProgress").textContent = "Sending image to Azure AI Document Intelligence...";
+      $("meterBar").style.width = "35%";
 
       try {
-        let file = selectedFile;
-        let blob = file;
+        const file = selectedFile;
+        let finalBlob = file;
 
-        // Check if HEIC
-        const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
-                       (file.name && file.name.toLowerCase().match(/\.heic$/));
-
-        let finalBlob = blob;
-
+        const isHeic = file.type === "image/heic" || file.type === "image/heif" || (file.name && /\.heic$/i.test(file.name));
         if (isHeic && window.heic2any) {
           try {
-            const jpegBlob = await window.heic2any({
-              blob: blob,
-              toType: 'image/jpeg',
-              quality: 0.9
-            });
-            finalBlob = jpegBlob;
+            finalBlob = await window.heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
             showToast("HEIC converted to JPEG");
-          } catch (convError) {
-            console.warn('HEIC conversion failed:', convError);
-            finalBlob = blob;
+          } catch (conversionError) {
+            console.warn("HEIC conversion failed:", conversionError);
+            finalBlob = file;
           }
         }
 
-        // Convert to base64
         const reader = new FileReader();
         const base64 = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result.split(',')[1]);
-          reader.onerror = reject;
+          reader.onload = () => {
+            const result = String(reader.result);
+            resolve(result.includes(",") ? result.split(",")[1] : result);
+          };
+          reader.onerror = () => reject(new Error("Could not read image file"));
           reader.readAsDataURL(finalBlob);
         });
 
-        // Send to backend
+        $("meterBar").style.width = "55%";
+        $("ocrProgress").textContent = "Azure AI is reading the physical freight label...";
+
         const ocrResponse = await fetch(`${API_BASE}/OCR`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image: base64 })
         });
 
-        if (!ocrResponse.ok) {
-          const errorData = await ocrResponse.json();
-          throw new Error(errorData.error || 'OCR failed');
-        }
-
         const data = await ocrResponse.json();
-        console.log('📋 Full Azure response:', data);   // <-- DIAGNOSTIC LOG
+        if (!ocrResponse.ok) throw new Error(data.error || "OCR failed");
 
+        console.log("📋 Full OCR response:", data);
         const extracted = data.extracted || {};
+        console.log("📦 Extracted freight fields:", extracted);
+        console.log("🔎 Extraction sources:", data.extractionSource || {});
 
-        // Populate OCR modal fields
-        document.getElementById('ocrSupplier').value = extracted.supplier || '';
-        document.getElementById('ocrPo').value = extracted.po || '';
+        $("ocrSupplier").value = extracted.supplier || "";
+        $("ocrPo").value = extracted.po || "";
+        $("ocrContractor").value = extracted.contractor || "";
+        $("ocrConnote").value = extracted.connote || "";
+        $("ocrReference").value = extracted.reference || "";
+        $("ocrQty").value = extracted.qty || "";
+        $("ocrWeight").value = extracted.weight || "";
+
         const siteMap = {
-          'BHP Olympic Dam': 'BHP Olympic Dam',
-          'BHP Carrapateena': 'BHP Carrapateena',
-          'BHP Prominent Hill': 'BHP Prominent Hill'
+          "BHP Olympic Dam": "BHP Olympic Dam",
+          "BHP Carrapateena": "BHP Carrapateena",
+          "BHP Prominent Hill": "BHP Prominent Hill"
         };
-        const siteVal = extracted.site || '';
-        document.getElementById('ocrSite').value = siteMap[siteVal] || '';
-        document.getElementById('ocrContractor').value = extracted.contractor || '';
-        document.getElementById('ocrConnote').value = extracted.connote || '';
-        document.getElementById('ocrReference').value = extracted.reference || '';
-        document.getElementById('ocrQty').value = extracted.qty || '';
-        document.getElementById('ocrWeight').value = extracted.weight || '';
+        $("ocrSite").value = siteMap[extracted.site || ""] || "";
+
+        $("ocrItemType").value = "";
         if (extracted.itemType) {
-          document.getElementById('ocrItemType').value = extracted.itemType;
+          const availableItemTypes = [...$("ocrItemType").options].map(option => option.value);
+          if (availableItemTypes.includes(extracted.itemType)) $("ocrItemType").value = extracted.itemType;
         }
 
+        $("rawOcr").textContent = data.rawText || "(No raw OCR text returned)";
         $("ocrBadge").textContent = "AI Extraction Complete";
         $("ocrBadge").className = "badge green";
-        $("ocrProgress").textContent = "Fields extracted by Azure AI – review before using.";
+        $("ocrProgress").textContent = "Fields extracted by Azure AI — review before using.";
         $("meterBar").style.width = "100%";
-        $("rawOcr").textContent = extracted.rawText || "(No raw text)";
-
-        showToast("OCR complete – fields pre-filled");
-
+        showToast("OCR complete — review extracted fields");
       } catch (error) {
-        console.error('OCR error:', error);
+        console.error("OCR error:", error);
         showToast("OCR failed: " + error.message);
         $("ocrBadge").textContent = "Error";
         $("ocrBadge").className = "badge red";
         $("ocrProgress").textContent = error.message;
+        $("meterBar").style.width = "0%";
       } finally {
         $("runOcrBtn").disabled = false;
         $("runOcrBtn").textContent = "Extract Fields";
       }
     };
 
-    // ========== USE EXTRACTED FIELDS (with parseInt fix) ==========
+    // ========== USE EXTRACTED FIELDS ==========
     $("useOcrBtn").onclick = function() {
       console.log("✅ Use Extracted Fields clicked");
 
-      const supplier = document.getElementById('ocrSupplier')?.value || '';
-      const po = document.getElementById('ocrPo')?.value || '';
-      const site = document.getElementById('ocrSite')?.value || '';
-      const contractor = document.getElementById('ocrContractor')?.value || '';
-      const connote = document.getElementById('ocrConnote')?.value || '';
-      const reference = document.getElementById('ocrReference')?.value || '';
-      const itemType = document.getElementById('ocrItemType')?.value || '';
-      // FIX: use parseInt to avoid "I" invalid value
-      const qty = parseInt(document.getElementById('ocrQty')?.value) || 1;
-      const weight = document.getElementById('ocrWeight')?.value || '';
+      const supplier = $("ocrSupplier")?.value.trim() || "";
+      const po = $("ocrPo")?.value.trim() || "";
+      const site = $("ocrSite")?.value || "";
+      const contractor = $("ocrContractor")?.value.trim() || "";
+      const connote = $("ocrConnote")?.value.trim() || "";
+      const reference = $("ocrReference")?.value.trim() || "";
+      const itemType = $("ocrItemType")?.value || "";
+      const qtyRaw = $("ocrQty")?.value.trim() || "";
+      const weightRaw = $("ocrWeight")?.value.trim() || "";
 
-      console.log("📦 Extracted values:", { supplier, po, site, contractor, connote, reference, itemType, qty, weight });
+      let qty = "";
+      if (qtyRaw !== "") {
+        const parsedQty = parseInt(qtyRaw, 10);
+        if (Number.isFinite(parsedQty) && parsedQty > 0) qty = parsedQty;
+      }
 
-      // Populate main form
-      if (supplier) document.getElementById('supplier').value = supplier;
-      if (po) document.getElementById('po').value = po;
-      if (site) document.getElementById('site').value = site;
-      if (contractor) document.getElementById('contractor').value = contractor;
-      if (connote) document.getElementById('connote').value = connote;
-      if (reference) document.getElementById('reference').value = reference;
+      let weight = "";
+      if (weightRaw !== "") {
+        const parsedWeight = parseFloat(weightRaw);
+        if (Number.isFinite(parsedWeight) && parsedWeight >= 0) weight = parsedWeight;
+      }
 
-      // Update items
-      const itemsBody = document.getElementById('itemsBody');
-      itemsBody.innerHTML = '';
-      const newRow = makeItemRow({ type: itemType, qty: qty, weight: weight });
-      itemsBody.appendChild(newRow);
+      console.log("📦 Reviewed OCR values:", { supplier, po, site, contractor, connote, reference, itemType, qty, weight });
+
+      if (supplier) $("supplier").value = supplier;
+      if (po) $("po").value = po;
+      if (site) $("site").value = site;
+      if (contractor) $("contractor").value = contractor;
+      if (connote) $("connote").value = connote;
+      if (reference) $("reference").value = reference;
+
+      const itemsBody = $("itemsBody");
+      itemsBody.innerHTML = "";
+      itemsBody.appendChild(makeItemRow({ type: itemType, qty, weight }));
       updateItemSummary();
 
       closeOcr();
-      setView('receive');
-      showToast('OCR fields pre-filled — review and confirm');
+      setView("receive");
+      showToast("OCR fields pre-filled — review and confirm");
     };
 
     // ========== CONFIRM GOODS RECEIVED ==========
