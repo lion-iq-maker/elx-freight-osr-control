@@ -8,7 +8,6 @@
   <meta http-equiv="Content-Security-Policy" 
         content="default-src 'self'; connect-src 'self' https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline';">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  <!-- Removed Tesseract.js – we use Azure AI now -->
   <style>
     :root {
       --elx-red: #d71920;
@@ -645,9 +644,7 @@
           <h2 id="pageTitle">ELX Freight Control</h2>
           <p id="pageSubtitle">BHP freight visibility from supplier receipt to site delivery and invoice readiness.</p>
         </div>
-        <div class="top-actions">
-          <button class="btn btn-dark" id="scanBtn">Scan Label</button>
-        </div>
+        <!-- Removed Scan Label button from header -->
       </section>
 
       <section class="kpi-grid" id="kpiSection"></section>
@@ -672,7 +669,7 @@
           <div class="panel fill">
             <div class="panel-head">
               <div><h3>Goods Received</h3><p>Supplier driver handover · manual entry or OCR-assisted label capture.</p></div>
-              <button class="btn btn-primary" id="scanReceiveBtn">Scan Physical Label</button>
+              <!-- Removed Scan Physical Label button -->
             </div>
             <div class="split-grid">
               <div class="upload-inline">
@@ -682,8 +679,8 @@
                   <p>Use the ELX tablet/iPad to scan the freight label or enter the information manually. OCR never creates the record automatically.</p>
                   <button class="btn btn-dark" id="startReceiveScan">Start Label Scan</button>
                   <div class="receipt-grid">
-                    <div class="receipt-mini"><small>Line Items</small><strong id="sumLines">1</strong></div>
-                    <div class="receipt-mini"><small>Total Qty</small><strong id="sumQty">1</strong></div>
+                    <div class="receipt-mini"><small>Line Items</small><strong id="sumLines">0</strong></div>
+                    <div class="receipt-mini"><small>Total Qty</small><strong id="sumQty">0</strong></div>
                     <div class="receipt-mini"><small>Weight</small><strong id="sumWeight">0 kg</strong></div>
                   </div>
                 </div>
@@ -924,10 +921,9 @@
 
   <script>
     // --- CONFIGURATION ---
-    // Point to your live Azure Functions backend
     const API_BASE = 'https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net/api';
 
-    // --- EXISTING STATE & HELPERS (unchanged) ---
+    // --- EXISTING STATE & HELPERS ---
     const STATUS = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched","Delivered","Ready to Invoice"];
     const DEFAULT_STAFF = ["Rahul Tamang","Staff Member 2","Staff Member 3"];
     const DEFAULT_LOCATIONS = ["BHP Olympic Dam Cage","BHP Carrapateena Cage","BHP Prominent Hill Cage","Quarantine / Exception Area","General Receiving Area","Ready Dispatch Zone","Loaded / Outbound Bay"];
@@ -1116,7 +1112,7 @@
       updateItemSummary();
     }
 
-    // --- ITEMS MANAGEMENT (unchanged) ---
+    // --- ITEMS MANAGEMENT ---
     function makeItemRow(data={type:"Pallet",qty:1,weight:""}) {
       const tr=document.createElement("tr");
       tr.innerHTML=`<td><div class="field"><label>Item Type</label><select class="itemType">${["Carton","Satchel","Pallet","Crate","Basket","Parcel","Stillage","IBC","Loose Freight","Other"].map(x=>`<option${x===data.type?" selected":""}>${x}</option>`).join("")}</select></div></td><td><div class="field"><label>Quantity</label><input class="itemQty" type="number" min="1" value="${data.qty}"></div></td><td><div class="field"><label>Weight (kg)</label><input class="itemWeight" type="number" min="0" step="0.1" value="${data.weight}"></div></td><td><button class="remove-line removeItem" type="button">×</button></td>`;
@@ -1125,7 +1121,7 @@
 
     function resetItems() {
       $("itemsBody").innerHTML="";
-      $("itemsBody").appendChild(makeItemRow());
+      $("itemsBody").appendChild(makeItemRow({type:"",qty:1,weight:""}));
       updateItemSummary();
     }
 
@@ -1137,7 +1133,7 @@
       $("sumWeight").textContent=(w%1?w.toFixed(1):w)+" kg";
     }
 
-    $("addItemBtn").onclick=()=>{ $("itemsBody").appendChild(makeItemRow()); updateItemSummary(); };
+    $("addItemBtn").onclick=()=>{ $("itemsBody").appendChild(makeItemRow({type:"",qty:1,weight:""})); updateItemSummary(); };
     $("itemsBody").addEventListener("input",updateItemSummary);
     $("itemsBody").addEventListener("click",e=>{
       const b=e.target.closest(".removeItem");
@@ -1154,7 +1150,7 @@
       resetItems();
     }
 
-    // --- UPDATED: OCR using Azure AI ---
+    // --- OCR using Azure AI ---
     $("runOcrBtn").onclick = async function() {
       if (!selectedImage) {
         showToast("No image selected");
@@ -1165,15 +1161,11 @@
       $("runOcrBtn").textContent = "Processing...";
 
       try {
-        // Fetch the image blob
         const response = await fetch(selectedImage);
         const blob = await response.blob();
-
-        // Prepare FormData
         const formData = new FormData();
         formData.append('file', blob, 'label.jpg');
 
-        // Call Azure OCR endpoint
         const ocrResponse = await fetch(`${API_BASE}/OCR`, {
           method: 'POST',
           body: formData
@@ -1187,7 +1179,7 @@
         const data = await ocrResponse.json();
         const extracted = data.extracted || {};
 
-        // Populate fields
+        // Populate OCR modal fields
         $("ocrSupplier").value = extracted.supplier || '';
         $("ocrPo").value = extracted.po || '';
         $("ocrSite").value = extracted.site || '';
@@ -1195,7 +1187,6 @@
         $("ocrReference").value = extracted.reference || '';
         $("ocrQty").value = extracted.qty || '';
 
-        // Update UI
         $("ocrBadge").textContent = "AI Extraction Complete";
         $("ocrBadge").className = "badge green";
         $("ocrProgress").textContent = "Fields extracted by Azure AI – review before using.";
@@ -1216,7 +1207,7 @@
       }
     };
 
-    // --- UPDATED: "Use Extracted Fields" (unchanged logic) ---
+    // --- Use Extracted Fields ---
     $("useOcrBtn").onclick = ()=>{
       if($("ocrSupplier").value) $("supplier").value = $("ocrSupplier").value;
       if($("ocrPo").value) $("po").value = $("ocrPo").value;
@@ -1233,9 +1224,8 @@
       showToast("OCR fields pre-filled — review and confirm");
     };
 
-    // --- UPDATED: Confirm Goods Received (calls Azure API) ---
+    // --- Confirm Goods Received ---
     $("confirmReceiveBtn").onclick = async function() {
-      // Validate required fields
       const missing = [];
       if(!$("supplier").value.trim()) missing.push("Supplier");
       if(!$("site").value) missing.push("Delivery Site");
@@ -1245,7 +1235,6 @@
         return;
       }
 
-      // Build payload
       const items = [...document.querySelectorAll("#itemsBody tr")].map(r => ({
         type: r.querySelector(".itemType").value,
         qty: Number(r.querySelector(".itemQty").value) || 1,
@@ -1264,7 +1253,6 @@
         items: items
       };
 
-      // Disable button to prevent double-click
       const btn = $("confirmReceiveBtn");
       btn.disabled = true;
       btn.textContent = "Saving...";
@@ -1282,8 +1270,6 @@
           throw new Error(data.error || 'Failed to create receipt');
         }
 
-        // Add to local state for display (temporary until we load from API)
-        // We'll create a local record object to show in the receipt modal
         const localRecord = {
           id: data.grNumber,
           supplier: data.supplier,
@@ -1295,7 +1281,6 @@
           receiptUrl: data.receiptUrl
         };
 
-        // Show receipt modal
         showReceipt(localRecord);
         clearReceive();
         showToast(data.grNumber + " created successfully");
@@ -1309,7 +1294,7 @@
       }
     };
 
-    // --- SHOW RECEIPT (updated to use data from API) ---
+    // --- SHOW RECEIPT ---
     function showReceipt(record) {
       const url = record.receiptUrl || buildReceiptUrl(record);
       $("receiptGrNumber").textContent = record.id;
@@ -1345,7 +1330,6 @@
       $("receiptModal").classList.add("open");
     }
 
-    // --- Helper functions (unchanged) ---
     function openReceiptPage(record, url) {
       const items = (record.items||[]).map(i => `
         <tr><td>${esc(i.type)}</td><td>${Number(i.qty)||0}</td><td>${Number(i.weight)||0} kg</td></tr>
@@ -1394,7 +1378,7 @@
       showToast("Receipt opened — use browser Print → Save as PDF");
     }
 
-    // --- LEGACY functions (kept for compatibility) ---
+    // --- LEGACY functions ---
     function nextId() {
       const d=new Date();
       const p=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
@@ -1415,7 +1399,7 @@
       return `https://receipt.energylogistix.com.au/r/${token}`;
     }
 
-    // --- OPEN / CLOSE MODALS ---
+    // --- MODALS ---
     function openOcr() { $("receiveModal").classList.add("open"); }
     function closeOcr() { $("receiveModal").classList.remove("open"); }
     function closeMove() { $("moveModal").classList.remove("open"); }
@@ -1449,14 +1433,12 @@
       $("meterBar").style.width = "0%";
     };
 
-    // --- NAVIGATION ---
     $("nav").addEventListener("click", function(e) {
       const n = e.target.closest(".nav-item");
       if(n) setView(n.dataset.view);
     });
 
-    // --- BUTTON BINDINGS ---
-    $("scanBtn").onclick = $("scanReceiveBtn").onclick = $("startReceiveScan").onclick = openOcr;
+    $("startReceiveScan").onclick = openOcr;
     $("closeModal").onclick = $("cancelOcrBtn").onclick = closeOcr;
     $("closeMoveModal").onclick = $("cancelMoveBtn").onclick = closeMove;
     $("closeReceiptModal").onclick = $("doneReceiptBtn").onclick = function() {
@@ -1465,7 +1447,7 @@
     };
     $("clearReceiveBtn").onclick = clearReceive;
 
-    // --- Save Move (legacy, still uses local state) ---
+    // --- Save Move (legacy) ---
     $("saveMoveBtn").onclick = function() {
       const r = state.records.find(x => x.id === selectedId);
       if(!r) return;
@@ -1492,7 +1474,7 @@
       showToast("Freight updated — dashboard refreshed");
     };
 
-    // --- Admin (unchanged) ---
+    // --- Admin ---
     $("addStaffBtn").onclick = function() {
       const v = $("newStaff").value.trim();
       if(v && !state.staff.includes(v)) {
@@ -1512,7 +1494,6 @@
       }
     };
 
-    // --- Filter bindings ---
     $("statusFilter").innerHTML = '<option value="">All statuses</option>' + STATUS.map(s => `<option>${s}</option>`).join("");
     $("searchInput").addEventListener("input", renderTracking);
     $("statusFilter").addEventListener("change", renderTracking);
@@ -1521,14 +1502,12 @@
       renderTracking();
     };
 
-    // --- Timestamp ---
     function refreshTimestamp() {
       $("timestampText").textContent = "Automatic timestamp: " + new Date().toLocaleString();
     }
     setInterval(refreshTimestamp, 1000);
     refreshTimestamp();
 
-    // --- Initial render ---
     resetItems();
     syncMasterData();
     renderAll();
