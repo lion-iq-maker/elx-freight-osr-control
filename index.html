@@ -468,20 +468,18 @@
       document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; setView("tracking"); renderTracking(); }; });
     }
 
-    // ========== UPDATED: RENDER TRACKING (API-based) ==========
+    // ========== RENDER TRACKING (API-based) ==========
     function renderTracking() {
       const search = document.getElementById('searchInput').value.trim();
       const statusFilter = document.getElementById('statusFilter').value;
       const location = activeLocationFilter;
 
-      // Build query string
       let url = `${API_BASE}/receipts?`;
       if (search) url += `search=${encodeURIComponent(search)}&`;
       if (statusFilter) url += `status=${encodeURIComponent(statusFilter)}&`;
       if (location) url += `locationId=${encodeURIComponent(location)}&`;
       url += 'page=1&pageSize=100';
 
-      // Show loading
       document.getElementById('trackingBody').innerHTML = '<tr><td colspan="11">Loading...</td></tr>';
 
       fetch(url)
@@ -514,7 +512,6 @@
           });
           document.getElementById('trackingBody').innerHTML = html || '<tr><td colspan="11">No records found.</td></tr>';
 
-          // Attach event listeners for Update buttons
           document.querySelectorAll('.updateBtn').forEach(b => b.onclick = () => openMove(b.dataset.id));
         })
         .catch(err => {
@@ -896,19 +893,44 @@
     function openOcr() { $("receiveModal").classList.add("open"); }
     function closeOcr() { $("receiveModal").classList.remove("open"); }
     function closeMove() { $("moveModal").classList.remove("open"); }
+
+    // ========== UPDATED: OPEN MOVE (works with tracking table) ==========
     function openMove(id) {
-      const r=state.records.find(x=>x.id===id);
-      if(!r) return;
-      selectedId=id;
-      $("moveTitle").textContent=`${r.id} · ${r.supplier} · ${r.site}`;
-      $("moveStatus").innerHTML=STATUS.map(s=>`<option>${s}</option>`).join("");
-      $("moveStatus").value=r.status;
-      $("moveLocation").innerHTML=state.locations.map(s=>`<option>${esc(s)}</option>`).join("");
-      $("moveLocation").value=r.location;
-      $("moveUser").innerHTML=state.staff.map(s=>`<option>${esc(s)}</option>`).join("");
-      $("moveUser").value=r.receivedBy || state.staff[0];
-      $("moveNote").value="";
-      $("moveModal").classList.add("open");
+        // First try to find in localStorage (legacy)
+        let r = state.records.find(x => x.id === id);
+
+        // If not found, try to find in the tracking table rows
+        if (!r) {
+            const rows = document.querySelectorAll('#trackingBody tr');
+            for (const row of rows) {
+                const grNumber = row.querySelector('td:first-child strong')?.textContent;
+                if (grNumber === id) {
+                    const cells = row.querySelectorAll('td');
+                    r = {
+                        id: grNumber,
+                        supplier: cells[1]?.textContent || '',
+                        site: cells[3]?.textContent || '',
+                        status: cells[8]?.textContent || '',
+                        location: cells[7]?.textContent || '',
+                        receivedBy: state.staff[0] || 'ELX Warehouse Admin'
+                    };
+                    break;
+                }
+            }
+        }
+
+        if (!r) {
+            showToast('Record not found');
+            return;
+        }
+
+        selectedId = id;
+        $("moveTitle").textContent = `${r.id} · ${r.supplier} · ${r.site}`;
+        $("moveStatus").value = r.status || 'Goods Received';
+        $("moveLocation").value = r.location || 'General Receiving Area';
+        $("moveUser").value = r.receivedBy || state.staff[0] || 'ELX Warehouse Admin';
+        $("moveNote").value = "";
+        $("moveModal").classList.add("open");
     }
 
     // ========== EVENT BINDINGS ==========
