@@ -1,5 +1,3 @@
-const { Readable } = require('stream');
-
 module.exports = async function (context, req) {
     const endpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
     const key = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
@@ -12,36 +10,34 @@ module.exports = async function (context, req) {
         return;
     }
 
-    // 1. Check that an image file was uploaded
-    if (!req.files || !req.files.file) {
+    const body = req.body || {};
+    const imageBase64 = body.image;
+
+    if (!imageBase64) {
         context.res = {
             status: 400,
-            body: JSON.stringify({ error: 'No image file uploaded. Use "file" field.' })
+            body: JSON.stringify({ error: 'No image provided. Send {"image": "base64string"}' })
         };
         return;
     }
 
-    const file = req.files.file;
-    const buffer = file.buffer; // Buffer of the image
-
     try {
-        // 2. Build the analyze request
+        // Convert base64 to Buffer
+        const imageBuffer = Buffer.from(imageBase64, 'base64');
+
+        // Build the analyze request
         const modelId = 'prebuilt-document';
         const apiVersion = '2023-07-31';
         const analyzeUrl = `${endpoint}/formrecognizer/documentModels/${modelId}:analyze?api-version=${apiVersion}`;
 
-        // Prepare form data with the image
-        const formData = new FormData();
-        const stream = Readable.from(buffer);
-        formData.append('file', stream, { filename: file.originalname || 'label.jpg' });
-
-        // 3. Send the request to Azure Document Intelligence
+        // Send to Azure Document Intelligence (as bytes)
         const response = await fetch(analyzeUrl, {
             method: 'POST',
             headers: {
                 'Ocp-Apim-Subscription-Key': key,
+                'Content-Type': 'application/octet-stream',
             },
-            body: formData,
+            body: imageBuffer,
         });
 
         if (!response.ok) {
@@ -49,22 +45,19 @@ module.exports = async function (context, req) {
             throw new Error(`Azure API error: ${response.status} - ${errorText}`);
         }
 
-        // 4. Get the operation URL from the response headers
         const operationLocation = response.headers.get('operation-location');
         if (!operationLocation) {
             throw new Error('No operation-location header returned from Azure.');
         }
 
-        // 5. Poll for completion
+        // Poll for completion
         let result = null;
         let attempts = 0;
         const maxAttempts = 30;
 
         while (attempts < maxAttempts) {
             const pollResponse = await fetch(operationLocation, {
-                headers: {
-                    'Ocp-Apim-Subscription-Key': key,
-                },
+                headers: { 'Ocp-Apim-Subscription-Key': key }
             });
             if (!pollResponse.ok) {
                 throw new Error(`Polling error: ${pollResponse.status}`);
@@ -76,7 +69,6 @@ module.exports = async function (context, req) {
             } else if (statusData.status === 'failed') {
                 throw new Error(`Analysis failed: ${statusData.error?.message || 'Unknown error'}`);
             }
-            // Still running – wait 1 second
             await new Promise(resolve => setTimeout(resolve, 1000));
             attempts++;
         }
@@ -85,7 +77,7 @@ module.exports = async function (context, req) {
             throw new Error('Analysis timed out after 30 seconds.');
         }
 
-        // 6. Extract key-value pairs from the result
+        // Extract key-value pairs
         const keyValuePairs = {};
         if (result.documents && result.documents.length > 0) {
             const doc = result.documents[0];
@@ -98,7 +90,6 @@ module.exports = async function (context, req) {
             }
         }
 
-        // Also try to extract from general key-value pairs (if any)
         if (result.keyValuePairs) {
             for (const kv of result.keyValuePairs) {
                 const key = kv.key?.content || '';
@@ -109,7 +100,7 @@ module.exports = async function (context, req) {
             }
         }
 
-        // 7. Map to fields expected by the frontend
+        // Map to expected fields
         const extracted = {
             supplier: keyValuePairs['Supplier'] || keyValuePairs['Vendor'] || keyValuePairs['Sender'] || '',
             po: keyValuePairs['PO Number'] || keyValuePairs['Purchase Order'] || keyValuePairs['PO'] || '',
@@ -117,17 +108,17 @@ module.exports = async function (context, req) {
             connote: keyValuePairs['Connote'] || keyValuePairs['Consignment'] || keyValuePairs['Tracking'] || '',
             reference: keyValuePairs['Reference'] || keyValuePairs['Ref'] || keyValuePairs['Docket'] || '',
             qty: keyValuePairs['Quantity'] || keyValuePairs['Qty'] || keyValuePairs['Items'] || '',
-            // Also include raw full text for debugging
+            contractor: keyValuePairs['Contractor'] || keyValuePairs['BHP Contractor'] || '',
+            weight: keyValuePairs['Weight'] || keyValuePairs['Kg'] || '',
+            itemType: keyValuePairs['Item Type'] || keyValuePairs['Type'] || '',
             rawText: result.content || '',
         };
 
-        // 8. Return the extracted data
         context.res = {
             status: 200,
             body: JSON.stringify({
                 success: true,
                 extracted: extracted,
-                confidence: 0.8, // We can estimate, but Azure doesn't give per-field confidence easily
             })
         };
 
