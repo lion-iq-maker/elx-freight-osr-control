@@ -758,7 +758,7 @@
 
     function resetItems() {
       $("itemsBody").innerHTML = "";
-      $("itemsBody").appendChild(makeItemRow({ type: "", qty: "", weight: "" }));
+      // No default row – user must click "+ Add Freight Item"
       updateItemSummary();
     }
 
@@ -1077,12 +1077,10 @@
     function closeOcr() { $("receiveModal").classList.remove("open"); }
     function closeMove() { $("moveModal").classList.remove("open"); }
 
-    // ========== UPDATED: OPEN MOVE (works with tracking table) ==========
+    // ========== UPDATED: OPEN MOVE (populates dropdowns) ==========
     function openMove(id) {
-        // First try to find in localStorage (legacy)
         let r = state.records.find(x => x.id === id);
 
-        // If not found, try to find in the tracking table rows
         if (!r) {
             const rows = document.querySelectorAll('#trackingBody tr');
             for (const row of rows) {
@@ -1109,9 +1107,47 @@
 
         selectedId = id;
         $("moveTitle").textContent = `${r.id} · ${r.supplier} · ${r.site}`;
-        $("moveStatus").value = r.status || 'Goods Received';
-        $("moveLocation").value = r.location || 'General Receiving Area';
-        $("moveUser").value = r.receivedBy || state.staff[0] || 'ELX Warehouse Admin';
+
+        // Populate Status dropdown
+        const statusSelect = document.getElementById('moveStatus');
+        if (statusSelect) {
+            // Clear and repopulate to ensure all statuses are present
+            statusSelect.innerHTML = '';
+            STATUS.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                statusSelect.appendChild(opt);
+            });
+            statusSelect.value = r.status || 'Goods Received';
+        }
+
+        // Populate Location dropdown
+        const locationSelect = document.getElementById('moveLocation');
+        if (locationSelect) {
+            locationSelect.innerHTML = '';
+            state.locations.forEach(loc => {
+                const opt = document.createElement('option');
+                opt.value = loc;
+                opt.textContent = loc;
+                locationSelect.appendChild(opt);
+            });
+            locationSelect.value = r.location || 'General Receiving Area';
+        }
+
+        // Populate User dropdown
+        const userSelect = document.getElementById('moveUser');
+        if (userSelect) {
+            userSelect.innerHTML = '';
+            state.staff.forEach(staff => {
+                const opt = document.createElement('option');
+                opt.value = staff;
+                opt.textContent = staff;
+                userSelect.appendChild(opt);
+            });
+            userSelect.value = r.receivedBy || state.staff[0] || 'ELX Warehouse Admin';
+        }
+
         $("moveNote").value = "";
         $("moveModal").classList.add("open");
     }
