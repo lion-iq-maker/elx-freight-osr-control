@@ -6,7 +6,7 @@
       "direction": "in",
       "name": "req",
       "methods": ["get", "post"],
-      "route": "receipts/{grNumber}/transition"
+      "route": "receipts/{grNumber?}/{action?}"
     },
     {
       "type": "http",
