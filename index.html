@@ -366,7 +366,7 @@
   </style>
 </head>
 <body>
-  <!-- ========== HTML STRUCTURE ========== -->
+  <!-- ========== HTML STRUCTURE (unchanged) ========== -->
   <div class="app">
     <aside class="sidebar">
       <div class="brand"><div class="brand-mark">ELX</div><div><h1>Freight Control</h1><p>Energy LogistiX · BHP Freight</p></div></div>
@@ -630,25 +630,101 @@
       renderAll();
     }
 
-    function renderKpis() {
-      const counts={}; STATUS.forEach(s=>counts[s]=state.records.filter(r=>r.status===s).length);
-      const cards=[ ["Goods Received",counts["Goods Received"],"New depot receipts","blue"], ["Location Assigned",counts["Location Assigned"],"Allocated to cage / zone","purple"], ["SAP Validated",counts["SAP Validated"],"SAP processing confirmed","amber"], ["Ready Dispatch",counts["Ready for Dispatch"],"Cleared for outbound","green"], ["Dispatched",counts["Dispatched"],"Left ELX depot","dark"], ["Delivered",counts["Delivered"],"Site delivery completed","green"], ["Ready to Invoice",counts["Ready to Invoice"],"Billing queue","purple"] ];
-      $("kpiSection").innerHTML=cards.map(c=>`<div class="kpi ${c[3]}"><div class="label">${c[0]}</div><div class="value">${c[1]}</div><div class="hint">${c[2]}</div></div>`).join("");
+    // ========== DASHBOARD API FUNCTIONS ==========
+
+    function loadDashboard() {
+        fetch(`${API_BASE}/dashboard`)
+            .then(res => {
+                if (!res.ok) throw new Error('Failed to load dashboard');
+                return res.json();
+            })
+            .then(data => {
+                // Update KPI cards
+                renderKpis(data.statusCounts);
+                // Update lifecycle board
+                renderBoard(data.board);
+            })
+            .catch(err => {
+                console.error('Dashboard error:', err);
+                // If API fails, fallback to localStorage data (temporarily)
+                renderKpis();
+                renderBoard();
+            });
     }
 
+    // Modified: accepts optional counts
+    function renderKpis(counts) {
+        if (!counts) {
+            const fallbackCounts = {};
+            STATUS.forEach(s => fallbackCounts[s] = state.records.filter(r => r.status === s).length);
+            counts = fallbackCounts;
+        }
+
+        const cards = [
+            ["Goods Received", counts["Goods Received"] || 0, "New depot receipts", "blue"],
+            ["Location Assigned", counts["Location Assigned"] || 0, "Allocated to cage / zone", "purple"],
+            ["SAP Validated", counts["SAP Validated"] || 0, "SAP processing confirmed", "amber"],
+            ["Ready Dispatch", counts["Ready for Dispatch"] || 0, "Cleared for outbound", "green"],
+            ["Dispatched", counts["Dispatched"] || 0, "Left ELX depot", "dark"],
+            ["Delivered", counts["Delivered"] || 0, "Site delivery completed", "green"],
+            ["Ready to Invoice", counts["Ready to Invoice"] || 0, "Billing queue", "purple"]
+        ];
+        $("kpiSection").innerHTML = cards.map(c => `<div class="kpi ${c[3]}"><div class="label">${c[0]}</div><div class="value">${c[1]}</div><div class="hint">${c[2]}</div></div>`).join("");
+    }
+
+    // Helper: card HTML from API
+    function boardCardHtmlFromApi(r) {
+        return `<div class="item-card" data-id="${esc(r.id)}">
+            <div class="item-top">
+                <div>
+                    <div class="item-id">${esc(r.id)}</div>
+                    <div class="supplier">${esc(r.supplier)}</div>
+                </div>
+            </div>
+            <div class="card-row"><span>PO</span><strong>${esc(r.po||"-")}</strong></div>
+            <div class="card-row"><span>Destination</span><strong>${esc(r.site)}</strong></div>
+            <div class="card-row"><span>Qty</span><strong>${r.totalQty || 0}</strong></div>
+        </div>`;
+    }
+
+    // Modified: accepts optional boardData
+    function renderBoard(boardData) {
+        if (!boardData) {
+            // Fallback to localStorage
+            const lanes = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
+            $("workloadBoard").innerHTML = lanes.map(s => {
+                const rows = state.records.filter(r => r.status === s);
+                return `<div class="lane"><div class="lane-head"><div class="lane-title">${s}</div><div class="lane-count">${rows.length}</div></div><div class="lane-cards">${rows.map(boardCardHtml).join("")}</div></div>`;
+            }).join("");
+            document.querySelectorAll("#workloadBoard .item-card").forEach(c => c.onclick = () => openMove(c.dataset.id));
+            return;
+        }
+
+        // Use API data
+        const lanes = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
+        $("workloadBoard").innerHTML = lanes.map(status => {
+            const lane = boardData.find(b => b.status === status);
+            const receipts = lane ? lane.receipts : [];
+            const count = lane ? lane.count : 0;
+            return `<div class="lane"><div class="lane-head"><div class="lane-title">${status}</div><div class="lane-count">${count}</div></div><div class="lane-cards">${receipts.map(r => boardCardHtmlFromApi(r)).join("")}</div></div>`;
+        }).join("");
+
+        document.querySelectorAll("#workloadBoard .item-card").forEach(c => c.onclick = () => openMove(c.dataset.id));
+    }
+
+    // Original boardCardHtml (used for fallback)
     function boardCardHtml(r) {
-      return `<div class="item-card" data-id="${esc(r.id)}"><div class="item-top"><div><div class="item-id">${esc(r.id)}</div><div class="supplier">${esc(r.supplier)}</div></div></div><div class="card-row"><span>PO</span><strong>${esc(r.po||"-")}</strong></div><div class="card-row"><span>Destination</span><strong>${esc(r.site)}</strong></div><div class="card-row"><span>Qty</span><strong>${totalQty(r)}</strong></div></div>`;
-    }
-
-    function renderBoard() {
-      const lanes=["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
-      $("workloadBoard").innerHTML=lanes.map(s=>{ const rows=state.records.filter(r=>r.status===s); return `<div class="lane"><div class="lane-head"><div class="lane-title">${s}</div><div class="lane-count">${rows.length}</div></div><div class="lane-cards">${rows.map(boardCardHtml).join("")}</div></div>`; }).join("");
-      document.querySelectorAll("#workloadBoard .item-card").forEach(c=>c.onclick=()=>openMove(c.dataset.id));
-    }
-
-    function renderLocations() {
-      $("largeWarehouseMap").innerHTML=state.locations.map((loc,i)=>{ const rows=state.records.filter(r=>r.location===loc); return `<div class="bay location-cage-card" data-location="${esc(loc)}" style="cursor:pointer;"><div><h4>${esc(loc)}</h4><small>${rows.length ? "Current freight in this location" : "Location currently clear"}</small></div><div class="big">${rows.length}</div></div>`; }).join("");
-      document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; setView("tracking"); renderTracking(); }; });
+        return `<div class="item-card" data-id="${esc(r.id)}">
+            <div class="item-top">
+                <div>
+                    <div class="item-id">${esc(r.id)}</div>
+                    <div class="supplier">${esc(r.supplier)}</div>
+                </div>
+            </div>
+            <div class="card-row"><span>PO</span><strong>${esc(r.po||"-")}</strong></div>
+            <div class="card-row"><span>Destination</span><strong>${esc(r.site)}</strong></div>
+            <div class="card-row"><span>Qty</span><strong>${totalQty(r)}</strong></div>
+        </div>`;
     }
 
     // ========== RENDER TRACKING (API-based) ==========
@@ -703,6 +779,12 @@
         });
     }
 
+    // ========== OTHER FUNCTIONS (unchanged) ==========
+    function renderLocations() {
+      $("largeWarehouseMap").innerHTML=state.locations.map((loc,i)=>{ const rows=state.records.filter(r=>r.location===loc); return `<div class="bay location-cage-card" data-location="${esc(loc)}" style="cursor:pointer;"><div><h4>${esc(loc)}</h4><small>${rows.length ? "Current freight in this location" : "Location currently clear"}</small></div><div class="big">${rows.length}</div></div>`; }).join("");
+      document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; setView("tracking"); renderTracking(); }; });
+    }
+
     function renderTimeline() {
       $("timelineRecordList").innerHTML=state.records.map(r=>`<div class="mini-card timelineRecord" data-id="${esc(r.id)}"><strong>${esc(r.id)}</strong><p style="color:#64748b;font-size:12px;margin:5px 0 0;">${esc(r.supplier)} · ${esc(r.status)}</p></div>`).join("");
       document.querySelectorAll(".timelineRecord").forEach(x=>x.onclick=()=>showTimeline(x.dataset.id));
@@ -734,9 +816,12 @@
       document.querySelectorAll(".removeLocation").forEach(b=>b.onclick=()=>{ if(state.locations.length>1){ state.locations.splice(+b.dataset.i,1); saveState(); renderAll(); } });
     }
 
+    // ========== UPDATED RENDER ALL ==========
     function renderAll() {
-      renderKpis();
-      renderBoard();
+      // Dashboard (KPI and Board) now comes from API
+      loadDashboard();
+
+      // Other components still use localStorage (will be updated later)
       renderLocations();
       renderTracking();
       renderTimeline();
@@ -758,7 +843,6 @@
 
     function resetItems() {
       $("itemsBody").innerHTML = "";
-      // No default row – user must click "+ Add Freight Item"
       updateItemSummary();
     }
 
@@ -1077,7 +1161,7 @@
     function closeOcr() { $("receiveModal").classList.remove("open"); }
     function closeMove() { $("moveModal").classList.remove("open"); }
 
-    // ========== UPDATED: OPEN MOVE (populates dropdowns) ==========
+    // ========== OPEN MOVE (populates dropdowns) ==========
     function openMove(id) {
         let r = state.records.find(x => x.id === id);
 
@@ -1111,7 +1195,6 @@
         // Populate Status dropdown
         const statusSelect = document.getElementById('moveStatus');
         if (statusSelect) {
-            // Clear and repopulate to ensure all statuses are present
             statusSelect.innerHTML = '';
             STATUS.forEach(s => {
                 const opt = document.createElement('option');
@@ -1152,16 +1235,7 @@
         $("moveModal").classList.add("open");
     }
 
-    // ========== EVENT BINDINGS ==========
-    $("chooseImageBtn").onclick = () => $("imageInput").click();
-    $("nav").addEventListener("click", function(e) { const n = e.target.closest(".nav-item"); if(n) setView(n.dataset.view); });
-    $("startReceiveScan").onclick = openOcr;
-    $("closeModal").onclick = $("cancelOcrBtn").onclick = closeOcr;
-    $("closeMoveModal").onclick = $("cancelMoveBtn").onclick = closeMove;
-    $("closeReceiptModal").onclick = $("doneReceiptBtn").onclick = function() { $("receiptModal").classList.remove("open"); setView("dashboard"); };
-    $("clearReceiveBtn").onclick = clearReceive;
-
-    // ========== UPDATED: SAVE MOVE (calls transition API) ==========
+    // ========== SAVE MOVE (calls transition API) ==========
     $("saveMoveBtn").onclick = async function() {
         if (!selectedId) {
             showToast("No record selected");
@@ -1199,8 +1273,6 @@
 
             showToast('Freight updated — dashboard refreshed');
             closeMove();
-
-            // Refresh all views (including tracking)
             renderAll();
 
         } catch (error) {
@@ -1211,6 +1283,15 @@
             btn.textContent = "Save Update";
         }
     };
+
+    // ========== EVENT BINDINGS ==========
+    $("chooseImageBtn").onclick = () => $("imageInput").click();
+    $("nav").addEventListener("click", function(e) { const n = e.target.closest(".nav-item"); if(n) setView(n.dataset.view); });
+    $("startReceiveScan").onclick = openOcr;
+    $("closeModal").onclick = $("cancelOcrBtn").onclick = closeOcr;
+    $("closeMoveModal").onclick = $("cancelMoveBtn").onclick = closeMove;
+    $("closeReceiptModal").onclick = $("doneReceiptBtn").onclick = function() { $("receiptModal").classList.remove("open"); setView("dashboard"); };
+    $("clearReceiveBtn").onclick = clearReceive;
 
     // ========== ADMIN ==========
     $("addStaffBtn").onclick = function() {
