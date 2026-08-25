@@ -487,7 +487,7 @@
             </div>
           </div>
         </div>
-        <!-- Locations -->
+        <!-- Locations (kept for compatibility, but can be hidden) -->
         <div class="view" id="view-locations">
           <div class="panel fill">
             <div class="panel-head"><div><h3>Locations / Cages</h3><p>Current freight allocation by BHP cage, exception area and dispatch zone.</p></div></div>
@@ -653,8 +653,7 @@
       renderAll();
     }
 
-    // ========== DASHBOARD API FUNCTIONS ==========
-
+    // ========== DATE HELPERS ==========
     function getLocalToday() {
         const d = new Date();
         const y = d.getFullYear();
@@ -666,16 +665,13 @@
     function getInclusiveDates(fromValue, toValue) {
         const from = fromValue || getLocalToday();
         const to = toValue || from;
-
         if (to < from) {
             showToast('To date must be on or after From date');
             return null;
         }
-
         const dates = [];
         const cursor = new Date(`${from}T12:00:00`);
         const endDate = new Date(`${to}T12:00:00`);
-
         while (cursor <= endDate) {
             const y = cursor.getFullYear();
             const m = String(cursor.getMonth() + 1).padStart(2, '0');
@@ -683,16 +679,15 @@
             dates.push(`${y}-${m}-${d}`);
             cursor.setDate(cursor.getDate() + 1);
         }
-
         return dates;
     }
 
+    // ========== DASHBOARD API (aggregates multiple dates) ==========
     async function loadDashboard() {
         const from = document.getElementById('dashboardDateFrom').value || getLocalToday();
         const to = document.getElementById('dashboardDateTo').value || from;
         const dates = getInclusiveDates(from, to);
         if (!dates) return;
-
         try {
             const dailyResults = await Promise.all(
                 dates.map(async date => {
@@ -701,21 +696,17 @@
                     return res.json();
                 })
             );
-
             const statusCounts = {};
             STATUS.forEach(s => statusCounts[s] = 0);
-
             const boardMaps = {};
             ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"].forEach(status => {
                 boardMaps[status] = new Map();
             });
-
             dailyResults.forEach(data => {
                 const counts = data.statusCounts || {};
                 STATUS.forEach(status => {
                     statusCounts[status] += Number(counts[status] || 0);
                 });
-
                 (data.board || []).forEach(lane => {
                     if (!boardMaps[lane.status]) boardMaps[lane.status] = new Map();
                     (lane.receipts || []).forEach(receipt => {
@@ -724,15 +715,12 @@
                     });
                 });
             });
-
             const board = Object.keys(boardMaps).map(status => {
                 const receipts = [...boardMaps[status].values()];
                 return { status, count: receipts.length, receipts };
             });
-
             renderKpis(statusCounts);
             renderBoard(board);
-
         } catch (err) {
             console.error('Dashboard error:', err);
             renderKpis();
@@ -746,7 +734,6 @@
             STATUS.forEach(s => fallbackCounts[s] = state.records.filter(r => r.status === s).length);
             counts = fallbackCounts;
         }
-
         const cards = [
             ["Goods Received", counts["Goods Received"] || 0, "New depot receipts", "blue"],
             ["Location Assigned", counts["Location Assigned"] || 0, "Allocated to cage / zone", "purple"],
@@ -783,7 +770,6 @@
             document.querySelectorAll("#workloadBoard .item-card").forEach(c => c.onclick = () => openMove(c.dataset.id));
             return;
         }
-
         const lanes = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
         $("workloadBoard").innerHTML = lanes.map(status => {
             const lane = boardData.find(b => b.status === status);
@@ -791,7 +777,6 @@
             const count = lane ? lane.count : 0;
             return `<div class="lane"><div class="lane-head"><div class="lane-title">${status}</div><div class="lane-count">${count}</div></div><div class="lane-cards">${receipts.map(r => boardCardHtmlFromApi(r)).join("")}</div></div>`;
         }).join("");
-
         document.querySelectorAll("#workloadBoard .item-card").forEach(c => c.onclick = () => openMove(c.dataset.id));
     }
 
@@ -809,7 +794,7 @@
         </div>`;
     }
 
-    // ========== RENDER TRACKING (API-based with date) ==========
+    // ========== RENDER TRACKING (API-based with date aggregation) ==========
     async function renderTracking() {
         const search = document.getElementById('searchInput').value.trim();
         const statusFilter = document.getElementById('statusFilter').value;
@@ -829,7 +814,6 @@
                     if (statusFilter) url += `status=${encodeURIComponent(statusFilter)}&`;
                     if (location) url += `locationId=${encodeURIComponent(location)}&`;
                     url += `date=${encodeURIComponent(date)}&page=1&pageSize=100`;
-
                     const res = await fetch(url);
                     if (!res.ok) throw new Error(`Failed to fetch tracking data for ${date}`);
                     return res.json();
@@ -881,27 +865,134 @@
         }
     }
 
-    // ========== OTHER FUNCTIONS (unchanged) ==========
+    // ========== LOCATIONS (unchanged, kept for compatibility) ==========
     function renderLocations() {
       $("largeWarehouseMap").innerHTML=state.locations.map((loc,i)=>{ const rows=state.records.filter(r=>r.location===loc); return `<div class="bay location-cage-card" data-location="${esc(loc)}" style="cursor:pointer;"><div><h4>${esc(loc)}</h4><small>${rows.length ? "Current freight in this location" : "Location currently clear"}</small></div><div class="big">${rows.length}</div></div>`; }).join("");
       document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; if ($("locationFilter")) $("locationFilter").value = activeLocationFilter; setView("tracking"); renderTracking(); }; });
     }
 
-    function renderTimeline() {
-      $("timelineRecordList").innerHTML=state.records.map(r=>`<div class="mini-card timelineRecord" data-id="${esc(r.id)}"><strong>${esc(r.id)}</strong><p style="color:#64748b;font-size:12px;margin:5px 0 0;">${esc(r.supplier)} · ${esc(r.status)}</p></div>`).join("");
-      document.querySelectorAll(".timelineRecord").forEach(x=>x.onclick=()=>showTimeline(x.dataset.id));
-      if(!selectedId && state.records[0]) selectedId=state.records[0].id;
-      if(selectedId) showTimeline(selectedId,false);
+    // ========== UPDATED RENDER TIMELINE (Azure API) ==========
+    async function renderTimeline() {
+        const listContainer = document.getElementById('timelineRecordList');
+        listContainer.innerHTML = '<div style="padding:12px;color:#64748b;">Loading receipts...</div>';
+        try {
+            const res = await fetch(`${API_BASE}/receipts?page=1&pageSize=200`);
+            if (!res.ok) throw new Error('Failed to fetch timeline records');
+            const data = await res.json();
+            const records = data.records || [];
+            if (records.length === 0) {
+                listContainer.innerHTML = '<div style="padding:12px;color:#64748b;">No receipts found.</div>';
+                return;
+            }
+            let html = '';
+            records.forEach(r => {
+                const totalQty = r.totalQty || 0;
+                html += `
+                    <div class="mini-card timelineRecord" data-id="${esc(r.id)}">
+                        <strong>${esc(r.id)}</strong>
+                        <p style="color:#64748b;font-size:12px;margin:5px 0 0;">
+                            ${esc(r.supplier)} · ${esc(r.status)} · Qty: ${totalQty}
+                        </p>
+                        <small style="color:#94a3b8;font-size:10px;">${fmt(r.updatedAt)}</small>
+                    </div>
+                `;
+            });
+            listContainer.innerHTML = html;
+            document.querySelectorAll('.timelineRecord').forEach(el => {
+                el.onclick = () => showTimeline(el.dataset.id);
+            });
+            if (!selectedId && records.length > 0) {
+                selectedId = records[0].id;
+                showTimeline(selectedId, false);
+            } else if (selectedId) {
+                showTimeline(selectedId, false);
+            }
+        } catch (err) {
+            console.error('Timeline list error:', err);
+            listContainer.innerHTML = '<div style="padding:12px;color:#b91c1c;">Error loading records.</div>';
+            // fallback to localStorage
+            fallbackTimeline();
+        }
     }
 
-    function showTimeline(id,setSelected=true) {
-      if(setSelected) selectedId=id;
-      const r=state.records.find(x=>x.id===id);
-      if(!r) return;
-      $("timelineSummary").innerHTML=`<div class="detail-box-lite"><strong>${esc(r.id)}</strong><p style="margin:5px 0 0;color:#64748b;font-size:12px;">${esc(r.supplier)} · ${esc(r.site)} · Current status: ${esc(r.status)}</p></div>`;
-      $("itemTimeline").innerHTML=(r.events||[]).slice().reverse().map(e=>`<div class="time-event"><div><strong>${esc(e.event)}</strong><br><small style="color:#64748b;">${fmt(e.time)} · ${esc(e.user||"System")} · ${esc(e.location||"-")}</small><br><small style="color:#64748b;">${esc(e.note||"")}</small></div><span class="badge ${tone(e.status)}">${esc(e.status)}</span></div>`).join("");
+    function fallbackTimeline() {
+        // old localStorage-based implementation
+        $("timelineRecordList").innerHTML=state.records.map(r=>`<div class="mini-card timelineRecord" data-id="${esc(r.id)}"><strong>${esc(r.id)}</strong><p style="color:#64748b;font-size:12px;margin:5px 0 0;">${esc(r.supplier)} · ${esc(r.status)}</p></div>`).join("");
+        document.querySelectorAll(".timelineRecord").forEach(x=>x.onclick=()=>showTimeline(x.dataset.id));
+        if(!selectedId && state.records[0]) selectedId=state.records[0].id;
+        if(selectedId) showTimeline(selectedId,false);
     }
 
+    // ========== UPDATED SHOW TIMELINE (Azure API) ==========
+    async function showTimeline(id, setSelected = true) {
+        if (setSelected) selectedId = id;
+        const summaryDiv = document.getElementById('timelineSummary');
+        const eventsDiv = document.getElementById('itemTimeline');
+        summaryDiv.innerHTML = '<div style="padding:12px;color:#64748b;">Loading...</div>';
+        eventsDiv.innerHTML = '';
+
+        try {
+            const res = await fetch(`${API_BASE}/receipts/${id}`);
+            if (!res.ok) throw new Error('Failed to fetch timeline details');
+            const receipt = await res.json();
+
+            summaryDiv.innerHTML = `
+                <div class="detail-box-lite">
+                    <strong>${esc(receipt.grNumber)}</strong>
+                    <p style="margin:5px 0 0;color:#64748b;font-size:12px;">
+                        ${esc(receipt.supplier)} · ${esc(receipt.site)} · Current status: ${esc(receipt.status)}
+                    </p>
+                    <p style="margin:3px 0 0;color:#64748b;font-size:11px;">
+                        Received: ${fmt(receipt.receivedAt)} · By: ${esc(receipt.receivedBy)}
+                    </p>
+                    ${receipt.itemsSummary ? `<p style="margin:3px 0 0;color:#64748b;font-size:11px;">Items: ${esc(receipt.itemsSummary)}</p>` : ''}
+                </div>
+            `;
+
+            const events = receipt.events || [];
+            if (events.length === 0) {
+                eventsDiv.innerHTML = '<div style="padding:12px;color:#64748b;">No events recorded.</div>';
+                return;
+            }
+
+            let html = '';
+            // Show newest first
+            events.slice().reverse().forEach(e => {
+                const statusBadge = e.status ? `<span class="badge ${tone(e.status)}">${esc(e.status)}</span>` : '';
+                html += `
+                    <div class="time-event">
+                        <div>
+                            <strong>${esc(e.event)}</strong>
+                            <br>
+                            <small style="color:#64748b;">
+                                ${fmt(e.timestamp)} · ${esc(e.user || 'System')} · ${esc(e.location || '-')}
+                            </small>
+                            ${e.note ? `<br><small style="color:#64748b;">${esc(e.note)}</small>` : ''}
+                        </div>
+                        ${statusBadge}
+                    </div>
+                `;
+            });
+            eventsDiv.innerHTML = html;
+
+        } catch (err) {
+            console.error('Timeline detail error:', err);
+            summaryDiv.innerHTML = '<div style="padding:12px;color:#b91c1c;">Error loading timeline.</div>';
+            eventsDiv.innerHTML = '';
+            // fallback to localStorage
+            fallbackShowTimeline(id, setSelected);
+        }
+    }
+
+    function fallbackShowTimeline(id, setSelected) {
+        if(setSelected) selectedId=id;
+        const r=state.records.find(x=>x.id===id);
+        if(!r) return;
+        $("timelineSummary").innerHTML=`<div class="detail-box-lite"><strong>${esc(r.id)}</strong><p style="margin:5px 0 0;color:#64748b;font-size:12px;">${esc(r.supplier)} · ${esc(r.site)} · Current status: ${esc(r.status)}</p></div>`;
+        $("itemTimeline").innerHTML=(r.events||[]).slice().reverse().map(e=>`<div class="time-event"><div><strong>${esc(e.event)}</strong><br><small style="color:#64748b;">${fmt(e.time)} · ${esc(e.user||"System")} · ${esc(e.location||"-")}</small><br><small style="color:#64748b;">${esc(e.note||"")}</small></div><span class="badge ${tone(e.status)}">${esc(e.status)}</span></div>`).join("");
+    }
+
+    // ========== REPORTS (unchanged) ==========
     function renderReports() {
       const sites=["BHP Olympic Dam","BHP Carrapateena","BHP Prominent Hill","Other / Unknown"];
       $("reportsBody").innerHTML=sites.map(site=>{ const rs=state.records.filter(r=>r.site===site); return `<tr><td><strong>${site}</strong></td><td>${rs.length}</td><td>${rs.reduce((a,r)=>a+totalQty(r),0)}</td><td>${Math.round(rs.reduce((a,r)=>a+totalWeight(r),0))} kg</td><td>${rs.filter(r=>STATUS.indexOf(r.status)>=4).length}</td><td>${rs.filter(r=>r.status==="Ready to Invoice").length}</td></tr>`; }).join("");
@@ -923,7 +1014,7 @@
       loadDashboard();
       renderLocations();
       renderTracking();
-      renderTimeline();
+      renderTimeline();   // now uses API
       renderReports();
       syncMasterData();
       updateItemSummary();
@@ -1331,7 +1422,7 @@
         $("moveModal").classList.add("open");
     }
 
-    // ========== SAVE MOVE (calls transition API) ==========
+    // ========== SAVE MOVE ==========
     $("saveMoveBtn").onclick = async function() {
         if (!selectedId) {
             showToast("No record selected");
@@ -1406,12 +1497,15 @@
         renderTracking();
     };
 
-    // Default range = today only, preserving the current Goods Received behaviour.
+    // Default range = today only
     const defaultToday = getLocalToday();
     document.getElementById('dashboardDateFrom').value = defaultToday;
     document.getElementById('dashboardDateTo').value = defaultToday;
     document.getElementById('trackingDateFrom').value = defaultToday;
     document.getElementById('trackingDateTo').value = defaultToday;
+
+    // Populate location filter
+    $("locationFilter").innerHTML = '<option value="">All Locations</option>' + state.locations.map(loc => `<option value="${esc(loc)}">${esc(loc)}</option>`).join("");
 
     // ========== ADMIN ==========
     $("addStaffBtn").onclick = function() {
@@ -1424,7 +1518,6 @@
     };
 
     $("statusFilter").innerHTML = '<option value="">All statuses</option>' + STATUS.map(s => `<option>${s}</option>`).join("");
-    $("locationFilter").innerHTML = '<option value="">All Locations</option>' + state.locations.map(loc => `<option value="${esc(loc)}">${esc(loc)}</option>`).join("");
     $("searchInput").addEventListener("input", renderTracking);
     $("statusFilter").addEventListener("change", renderTracking);
     $("locationFilter").addEventListener("change", function() { activeLocationFilter = this.value; renderTracking(); });
