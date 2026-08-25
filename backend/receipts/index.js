@@ -17,11 +17,11 @@ module.exports = async function (context, req) {
     }
 
     // --- POST: transition (update status/location) ---
-    if (req.method === 'POST' && req.params && req.params.grNumber) {
+    if (req.method === 'POST' && req.params && req.params.action === 'transition') {
         return handleTransition(context, req, connectionString);
     }
 
-    // --- POST: create a new receipt (existing) ---
+    // --- POST: create a new receipt ---
     if (req.method === 'POST') {
         return handlePost(context, req, connectionString);
     }
@@ -290,10 +290,8 @@ async function handleTransition(context, req, connectionString) {
     }
 }
 
-// ========== HANDLE POST (Create Receipt) – YOUR EXISTING LOGIC (unchanged) ==========
+// ========== HANDLE POST (Create Receipt) – YOUR EXISTING LOGIC ==========
 async function handlePost(context, req, connectionString) {
-    // Your existing POST logic – keep exactly as you had it.
-    // I'm copying it here for completeness, but it should be identical to your current version.
     const body = req.body || {};
     const required = ['supplier', 'site', 'receivedBy'];
     const missing = required.filter(f => !body[f]);
