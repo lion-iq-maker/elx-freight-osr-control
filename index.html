@@ -10,8 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <style>
-    /* ========== YOUR EXISTING STYLES (full) ========== */
-    /* I'll include all the styles from the previous working version */
+    /* ========== YOUR EXISTING STYLES (unchanged) ========== */
     :root { --elx-red: #d71920; --elx-red-dark: #ad1117; --ink: #101827; --ink-2: #334155; --muted: #64748b; --line: #e2e8f0; --panel: #ffffff; --soft: #f8fafc; --soft-2: #f1f5f9; --sidebar: #070b13; --green: #16a34a; --green-soft: #ecfdf5; --amber: #d97706; --amber-soft: #fffbeb; --red-soft: #fef2f2; --blue: #2563eb; --blue-soft: #eff6ff; --purple: #7c3aed; --purple-soft: #f5f3ff; --shadow: 0 18px 45px rgba(15,23,42,0.08); --radius: 18px; --header-h: 88px; --status-h: 38px; --kpi-h: 104px; }
     * { box-sizing: border-box; } html, body { width: 100%; height: 100%; }
     body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%); overflow: hidden; }
@@ -107,18 +106,16 @@
     .upload-inline { height: 100%; min-height: 320px; border: 2px dashed #cbd5e1; border-radius: 20px; background: white; display: grid; place-items: center; text-align: center; padding: 18px; }
     .upload-inline h4 { margin: 0; font-size: 16px; } .upload-inline p { margin: 8px 0 13px; color: var(--muted); font-size: 12px; line-height: 1.45; }
     .camera-icon { width: 70px; height: 70px; border-radius: 22px; background: var(--soft); display: grid; place-items: center; margin: 0 auto 12px; font-size: 30px; box-shadow: 0 18px 38px rgba(15,23,42,0.08); }
-    .table-wrap { height: 100%; overflow-y: auto !important; overflow-x: auto !important; min-height: 0; }
-    table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    .table-wrap { height: 100%; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
     th, td { padding: 11px 13px; text-align: left; border-bottom: 1px solid var(--line); font-size: 12px; }
-    th { color: var(--muted); background: var(--soft); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; position: sticky; top: 0; z-index: 1; }
+    th { color: var(--muted); background: var(--soft); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; }
     tr:hover td { background: #fff7f7; }
     .map-large { height: 100%; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 10px; background: var(--soft); }
     .bay { border: 1px solid var(--line); background: white; border-radius: 18px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 0; }
     .bay h4 { margin: 0; font-size: 15px; } .bay .big { font-size: 38px; font-weight: 950; letter-spacing: -0.05em; } .bay small { color: var(--muted); }
-    .search-row { display: flex; gap: 9px; padding: 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; align-items: center; }
-    .search-row input, .search-row select { border: 1px solid var(--line); border-radius: 14px; padding: 11px 13px; outline: none; font-size: 12px; }
-    .search-row input { flex: 1; min-width: 120px; }
-    .status-select { min-width: 160px; }
+    .search-row { display: flex; gap: 9px; padding: 10px; border-bottom: 1px solid var(--line); }
+    .search-row input { flex: 1; border: 1px solid var(--line); border-radius: 14px; padding: 11px 13px; outline: none; }
     .detail-box { background: var(--soft); border: 1px solid var(--line); border-radius: 18px; padding: 13px; min-height: 0; }
     .timeline-list { display: grid; gap: 8px; }
     .time-event { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 10px; display: flex; justify-content: space-between; gap: 12px; }
@@ -188,36 +185,80 @@
     @media (min-width:700px) and (max-width:1180px) and (pointer:coarse) {
       html, body { width:100%; height:100%; overflow:hidden !important; }
       body { -webkit-text-size-adjust:100%; overscroll-behavior:none; }
-      .app { display:grid !important; grid-template-columns:176px minmax(0,1fr) !important; width:100vw !important; height:100dvh !important; min-height:0 !important; overflow:hidden !important; }
-      .sidebar { height:100dvh !important; min-height:0 !important; padding:10px 8px !important; overflow-y:auto !important; overflow-x:hidden !important; }
+
+      .app {
+        display:grid !important;
+        grid-template-columns:176px minmax(0,1fr) !important;
+        width:100vw !important;
+        height:100dvh !important;
+        min-height:0 !important;
+        overflow:hidden !important;
+      }
+
+      .sidebar {
+        height:100dvh !important;
+        min-height:0 !important;
+        padding:10px 8px !important;
+        overflow-y:auto !important;
+        overflow-x:hidden !important;
+      }
+
       .brand { gap:8px !important; padding:6px 5px 10px !important; }
       .brand-mark { width:34px !important; height:34px !important; border-radius:11px !important; font-size:13px !important; }
       .brand h1 { font-size:13px !important; }
       .brand p { font-size:9.5px !important; line-height:1.25 !important; }
-      .nav { display:grid !important; grid-template-columns:1fr !important; gap:3px !important; padding:9px 0 !important; overflow:visible !important; }
+
+      .nav {
+        display:grid !important;
+        grid-template-columns:1fr !important;
+        gap:3px !important;
+        padding:9px 0 !important;
+        overflow:visible !important;
+      }
       .nav-item { gap:8px !important; padding:8px !important; border-radius:10px !important; font-size:11px !important; min-height:34px !important; }
       .nav-icon { width:17px !important; }
       .sidebar-bottom { padding-top:9px !important; }
       .role-card { padding:9px !important; border-radius:12px !important; }
       .role-card .name { font-size:11px !important; }
       .role-card .meta { font-size:9px !important; line-height:1.3 !important; }
-      main { width:100% !important; height:100dvh !important; min-width:0 !important; min-height:0 !important; padding:9px !important; overflow:hidden !important; display:grid !important; grid-template-rows:68px auto minmax(0,1fr) !important; gap:7px !important; }
+
+      main {
+        width:100% !important;
+        height:100dvh !important;
+        min-width:0 !important;
+        min-height:0 !important;
+        padding:9px !important;
+        overflow:hidden !important;
+        display:grid !important;
+        grid-template-rows:68px auto minmax(0,1fr) !important;
+        gap:7px !important;
+      }
+
       .header { height:68px !important; min-height:0 !important; padding:9px 12px !important; border-radius:16px !important; gap:10px !important; }
       .eyebrow { font-size:8.5px !important; margin-bottom:2px !important; }
       .header h2 { font-size:19px !important; line-height:1 !important; }
       .header p { margin-top:3px !important; font-size:10px !important; line-height:1.25 !important; }
+
       .kpi-grid { grid-template-columns:repeat(7,minmax(0,1fr)) !important; gap:6px !important; min-height:74px !important; }
       .kpi { min-width:0 !important; min-height:74px !important; padding:8px !important; border-radius:13px !important; }
       .kpi .label { font-size:7.5px !important; letter-spacing:.025em !important; line-height:1.15 !important; }
       .kpi .value { margin-top:4px !important; font-size:20px !important; }
       .kpi .hint { margin-top:1px !important; font-size:8px !important; line-height:1.15 !important; }
+
       .view-stage, .view, .panel.fill { min-height:0 !important; height:100% !important; overflow:hidden !important; }
       .panel { border-radius:16px !important; }
       .panel-head { min-height:44px !important; padding:8px 10px !important; }
       .panel-head h3 { font-size:13px !important; }
       .panel-head p { margin-top:2px !important; font-size:9px !important; }
       .small-pill { padding:5px 7px !important; font-size:9px !important; }
-      .board { grid-template-columns:repeat(5,minmax(0,1fr)) !important; gap:6px !important; padding:7px !important; height:100% !important; overflow:hidden !important; }
+
+      .board {
+        grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+        gap:6px !important;
+        padding:7px !important;
+        height:100% !important;
+        overflow:hidden !important;
+      }
       .lane { min-width:0 !important; padding:6px !important; border-radius:13px !important; }
       .lane-head { margin-bottom:5px !important; padding-bottom:5px !important; }
       .lane-title { font-size:8px !important; line-height:1.15 !important; }
@@ -227,37 +268,56 @@
       .item-id { font-size:10px !important; }
       .supplier { font-size:8.5px !important; }
       .card-row { margin-top:5px !important; gap:5px !important; font-size:8.5px !important; }
-      .split-grid { height:100% !important; grid-template-columns:minmax(230px,.72fr) minmax(0,1.28fr) !important; gap:7px !important; padding:7px !important; overflow:hidden !important; }
+
+      .split-grid {
+        height:100% !important;
+        grid-template-columns:minmax(230px,.72fr) minmax(0,1.28fr) !important;
+        gap:7px !important;
+        padding:7px !important;
+        overflow:hidden !important;
+      }
       .upload-inline { min-height:0 !important; height:100% !important; padding:12px !important; border-radius:15px !important; overflow-y:auto !important; }
       .camera-icon { width:52px !important; height:52px !important; border-radius:16px !important; margin-bottom:8px !important; font-size:22px !important; }
       .upload-inline h4 { font-size:13px !important; }
       .upload-inline p { margin:5px 0 9px !important; font-size:9.5px !important; }
+
       .receipt-grid { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:5px !important; margin-top:8px !important; }
       .receipt-mini { padding:7px !important; border-radius:11px !important; }
       .receipt-mini small { font-size:8px !important; }
       .receipt-mini strong { margin-top:2px !important; font-size:15px !important; }
+
       .form-panel { min-height:0 !important; padding:9px !important; border-radius:14px !important; }
       .receive-form-wrap { overflow-y:auto !important; overflow-x:hidden !important; }
       .field-grid { grid-template-columns:1fr 1fr !important; gap:6px !important; }
       .field label { margin-bottom:3px !important; font-size:9px !important; }
-      .field input, .field select, textarea, .items-table input, .items-table select { min-height:34px !important; padding:7px 8px !important; border-radius:10px !important; font-size:10px !important; }
+      .field input, .field select, textarea, .items-table input, .items-table select {
+        min-height:34px !important;
+        padding:7px 8px !important;
+        border-radius:10px !important;
+        font-size:10px !important;
+      }
       textarea { min-height:54px !important; }
       .items-table { border-spacing:0 4px !important; }
       .remove-line { width:34px !important; height:34px !important; margin-top:21px !important; border-radius:10px !important; }
       .btn { padding:8px 10px !important; border-radius:10px !important; font-size:10px !important; }
+
       .search-row { gap:6px !important; padding:7px !important; }
       .search-row input, .search-row select { min-width:0 !important; padding:8px 9px !important; font-size:10px !important; }
       .status-select { min-width:130px !important; }
+
       .table-wrap { width:100% !important; min-height:0 !important; overflow:auto !important; -webkit-overflow-scrolling:touch; }
       table { min-width:760px; }
       th, td { padding:8px !important; font-size:9.5px !important; }
       th { font-size:8.5px !important; }
+
       .map-large { grid-template-columns:repeat(4,minmax(0,1fr)) !important; gap:7px !important; padding:7px !important; overflow-y:auto !important; }
       .bay { min-width:0 !important; padding:9px !important; border-radius:13px !important; }
       .bay h4 { font-size:11px !important; }
       .bay .big { font-size:27px !important; }
+
       .tab-grid { grid-template-columns:minmax(0,1fr) minmax(250px,.42fr) !important; gap:7px !important; }
       .scroll-area, .timeline-scroll { overflow-y:auto !important; }
+
       .modal-backdrop { padding:10px !important; }
       .modal { width:min(960px,calc(100vw - 20px)) !important; max-height:calc(100dvh - 20px) !important; border-radius:18px !important; }
       .modal-head { padding:11px 13px !important; }
@@ -271,11 +331,13 @@
       .detail-box { padding:9px !important; border-radius:12px !important; }
       #rawOcr { max-height:75px !important; font-size:9px !important; }
       .modal-actions { padding:9px 12px 11px !important; gap:6px !important; }
+
       .receipt-modal-body { min-height:0 !important; grid-template-columns:.9fr 1.1fr !important; gap:10px !important; padding:10px 12px 12px !important; overflow-y:auto !important; }
       #receiptQr { min-height:160px !important; }
       #receiptQr img, #receiptQr canvas { max-width:160px !important; max-height:160px !important; }
       .toast { right:12px !important; bottom:12px !important; padding:10px 12px !important; font-size:10px !important; border-radius:12px !important; }
     }
+
     @media (min-width:700px) and (max-width:900px) and (pointer:coarse) and (orientation:portrait) {
       .app { grid-template-columns:142px minmax(0,1fr) !important; }
       .sidebar { padding:8px 6px !important; }
@@ -294,11 +356,13 @@
       .map-large { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
       .receipt-modal-body { grid-template-columns:1fr !important; }
     }
+
     @media (min-width:900px) and (max-width:1180px) and (pointer:coarse) and (orientation:landscape) {
       .app { grid-template-columns:176px minmax(0,1fr) !important; }
       .board { grid-template-columns:repeat(5,minmax(0,1fr)) !important; overflow-x:hidden !important; }
       .split-grid { grid-template-columns:minmax(220px,.68fr) minmax(0,1.32fr) !important; }
     }
+
   </style>
 </head>
 <body>
@@ -326,17 +390,7 @@
         <!-- Dashboard -->
         <div class="view active" id="view-dashboard">
           <div class="panel fill">
-            <div class="panel-head">
-              <div><h3>Freight Lifecycle Board</h3><p>Goods Received → Location Assigned → SAP Validated → Ready for Dispatch → Dispatched.</p></div>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <label style="font-size:11px;font-weight:850;color:var(--muted);">From:</label>
-                <input type="date" id="dashboardStartDate" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;">
-                <label style="font-size:11px;font-weight:850;color:var(--muted);">To:</label>
-                <input type="date" id="dashboardEndDate" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;">
-                <button class="btn btn-light" id="dashboardDateBtn" style="padding:6px 12px;font-size:10px;">Apply</button>
-                <button class="btn btn-ghost" id="dashboardDateReset" style="padding:6px 12px;font-size:10px;">Today</button>
-              </div>
-            </div>
+            <div class="panel-head"><div><h3>Freight Lifecycle Board</h3><p>Goods Received → Location Assigned → SAP Validated → Ready for Dispatch → Dispatched.</p></div><span class="small-pill">Largs North Depot</span></div>
             <div class="board" id="workloadBoard"></div>
           </div>
         </div>
@@ -386,18 +440,7 @@
           <div class="panel fill">
             <div class="panel-head"><div><h3>Freight Tracking</h3><p>Search any ELX GR and move freight through the operational lifecycle.</p></div></div>
             <div style="display:grid;grid-template-rows:auto 1fr;min-height:0;">
-              <div class="search-row">
-                <input id="searchInput" placeholder="Search ELX GR, PO, supplier, connote, reference or site">
-                <select id="statusFilter" class="status-select"></select>
-                <label style="font-size:11px;font-weight:850;color:var(--muted);">From:</label>
-                <input type="date" id="trackingStartDate" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;">
-                <label style="font-size:11px;font-weight:850;color:var(--muted);">To:</label>
-                <input type="date" id="trackingEndDate" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;">
-                <button class="btn btn-light" id="trackingDateBtn" style="padding:6px 12px;font-size:10px;">Apply</button>
-                <button class="btn btn-ghost" id="trackingDateReset" style="padding:6px 12px;font-size:10px;">Today</button>
-                <span class="small-pill" id="locationFilterPill" style="display:none;"></span>
-                <button class="btn btn-light" id="clearLocationFilterBtn" style="display:none;">Clear Cage Filter</button>
-              </div>
+              <div class="search-row"><input id="searchInput" placeholder="Search ELX GR, PO, supplier, connote, reference or site"><select id="statusFilter" class="status-select"></select><span class="small-pill" id="locationFilterPill" style="display:none;"></span><button class="btn btn-light" id="clearLocationFilterBtn" style="display:none;">Clear Cage Filter</button></div>
               <div class="table-wrap">
                 <table>
                   <thead>
@@ -454,9 +497,73 @@
   </div>
 
   <!-- Modals -->
-  <div class="modal-backdrop" id="receiveModal">...</div>
-  <div class="modal-backdrop" id="moveModal">...</div>
-  <div class="modal-backdrop" id="receiptModal">...</div>
+  <div class="modal-backdrop" id="receiveModal">
+    <div class="modal">
+      <div class="modal-head"><div><h3>Scan Physical Label</h3><p style="margin:4px 0 0;color:#64748b;font-size:13px;">Take/upload photo → AI OCR extraction → human review → pre-fill Goods Received form.</p></div><button class="close" id="closeModal">×</button></div>
+      <div class="modal-body">
+        <div class="upload-box">
+          <div>
+            <input type="file" id="imageInput" accept="image/*" capture="environment" style="display:none;">
+            <div class="camera-icon">▣</div>
+            <h4>Take or upload label photo</h4>
+            <p>On iPad/tablet use the camera. On PC upload a freight-label image. Use good light and keep the label flat.</p>
+            <button class="btn btn-dark" id="chooseImageBtn">Take / Upload Photo</button>
+            <div id="previewWrap" style="display:none;margin-top:12px;"><img id="previewImg" style="max-width:100%;max-height:210px;object-fit:contain;border-radius:14px;border:1px solid var(--line);background:white;"></div>
+          </div>
+        </div>
+        <div>
+          <div class="field-grid">
+            <div class="field"><label>Supplier / Sender</label><input id="ocrSupplier" placeholder="Extracted supplier"></div>
+            <div class="field"><label>Delivery Site</label><select id="ocrSite"><option value="">Select extracted site</option><option>BHP Olympic Dam</option><option>BHP Carrapateena</option><option>BHP Prominent Hill</option><option>Other / Unknown</option></select></div>
+            <div class="field"><label>BHP Contractor Name</label><input id="ocrContractor" placeholder="Extracted contractor"></div>
+            <div class="field"><label>PO Number</label><input id="ocrPo" placeholder="Extracted PO"></div>
+            <div class="field"><label>Other Reference(s)</label><input id="ocrReference" placeholder="Extracted reference"></div>
+            <div class="field"><label>Connote / Consignment</label><input id="ocrConnote" placeholder="Extracted connote"></div>
+          </div>
+          <div style="margin-top:12px;font-weight:900;font-size:12px;">Freight Item (OCR will fill Quantity)</div>
+          <div class="field-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div class="field"><label>Item Type</label><select id="ocrItemType"><option value="">Select type</option><option>Carton</option><option>Satchel</option><option>Pallet</option><option>Crate</option><option>Basket</option><option>Parcel</option><option>Stillage</option><option>IBC</option><option>Loose Freight</option><option>Other</option></select></div>
+            <div class="field"><label>Quantity</label><input id="ocrQty" placeholder="Extracted quantity"></div>
+            <div class="field"><label>Weight (kg)</label><input id="ocrWeight" placeholder="Extracted weight"></div>
+          </div>
+          <div class="confidence">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;"><strong>OCR Status</strong><span class="badge grey" id="ocrBadge">Waiting for image</span></div>
+            <div class="meter"><span id="meterBar" style="width:0%"></span></div>
+            <small id="ocrProgress" style="color:#64748b;">Azure AI OCR – human review required before confirmation.</small>
+          </div>
+          <div class="detail-box" style="margin-top:12px;"><strong style="font-size:12px;">Raw OCR text</strong><div id="rawOcr" style="margin-top:7px;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:11px;color:#475569;max-height:120px;overflow:auto;">-</div></div>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-light" id="cancelOcrBtn">Cancel</button><button class="btn btn-dark" id="runOcrBtn" disabled>Extract Fields</button><button class="btn btn-green" id="useOcrBtn">Use Extracted Fields</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="moveModal"><div class="modal" style="width:min(720px,100%);"><div class="modal-head"><div><h3>Update Freight Lifecycle</h3><p id="moveTitle" style="margin:4px 0 0;color:#64748b;font-size:13px;"></p></div><button class="close" id="closeMoveModal">×</button></div><div class="modal-body" style="grid-template-columns:1fr;"><div class="field-grid"><div class="field"><label>Workflow Status</label><select id="moveStatus"></select></div><div class="field"><label>Location / Cage</label><select id="moveLocation"></select></div><div class="field"><label>Updated By</label><select id="moveUser"></select></div><div class="field"><label>Movement Note</label><input id="moveNote" placeholder="e.g. SAP validated by warehouse staff"></div></div></div><div class="modal-actions"><button class="btn btn-light" id="cancelMoveBtn">Cancel</button><button class="btn btn-primary" id="saveMoveBtn">Save Update</button></div></div></div>
+
+  <div class="modal-backdrop" id="receiptModal">
+    <div class="modal" style="width:min(920px,100%);">
+      <div class="modal-head"><div><h3>Goods Received Receipt</h3><p style="margin:4px 0 0;color:#64748b;font-size:13px;">Supplier POD · QR receipt generated after confirmation.</p></div><button class="close" id="closeReceiptModal">×</button></div>
+      <div class="receipt-modal-body">
+        <div>
+          <div class="receipt-success"><h4>✓ Goods Received Confirmed</h4><p>Energy LogistiX has received the freight at 7 Creswell Rd, Largs North SA 5016.</p></div>
+          <div class="receipt-ref"><small>ELX Goods Received Reference</small><strong id="receiptGrNumber">-</strong></div>
+          <div class="detail-box" style="margin-top:12px;">
+            <div class="field-grid"><div class="field"><label>Supplier</label><input id="receiptSupplier" readonly></div><div class="field"><label>Destination</label><input id="receiptSite" readonly></div><div class="field"><label>Received By</label><input id="receiptReceivedBy" readonly></div><div class="field"><label>Received At</label><input id="receiptDateTime" readonly></div></div>
+            <table class="receipt-table"><thead><tr><th>Item</th><th>Qty</th><th>Weight</th></tr></thead><tbody id="receiptItemsBody"></tbody></table>
+          </div>
+        </div>
+        <div class="qr-panel">
+          <div style="font-weight:900;font-size:15px;">Supplier POD / Receipt QR</div>
+          <p style="margin:6px 0 12px;color:#64748b;font-size:12px;">Driver scans this QR on their personal phone to open the read-only receipt page.</p>
+          <div id="receiptQr"></div>
+          <div class="receipt-url" id="receiptUrlText">-</div>
+          <div style="display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:14px;"><button class="btn btn-dark" id="openReceiptBtn">Open Receipt Page</button><button class="btn btn-light" id="printReceiptBtn">Print / Save PDF</button></div>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-primary" id="doneReceiptBtn">Done</button></div>
+    </div>
+  </div>
+
   <div class="toast" id="toast">Saved</div>
 
   <script>
@@ -523,135 +630,37 @@
       renderAll();
     }
 
-    // ========== DATE RANGE HELPERS ==========
-    function getToday() {
-      return new Date().toISOString().slice(0, 10);
-    }
-
-    function getDashboardDateRange() {
-      const start = document.getElementById('dashboardStartDate').value;
-      const end = document.getElementById('dashboardEndDate').value;
-      if (start && end) return { startDate: start, endDate: end };
-      const today = getToday();
-      return { startDate: today, endDate: today };
-    }
-
-    function getTrackingDateRange() {
-      const start = document.getElementById('trackingStartDate').value;
-      const end = document.getElementById('trackingEndDate').value;
-      if (start && end) return { startDate: start, endDate: end };
-      const today = getToday();
-      return { startDate: today, endDate: today };
-    }
-
-    function setDashboardDates(start, end) {
-      document.getElementById('dashboardStartDate').value = start;
-      document.getElementById('dashboardEndDate').value = end;
-    }
-
-    function setTrackingDates(start, end) {
-      document.getElementById('trackingStartDate').value = start;
-      document.getElementById('trackingEndDate').value = end;
-    }
-
-    // ========== DASHBOARD API ==========
-    function loadDashboard() {
-      const { startDate, endDate } = getDashboardDateRange();
-      fetch(`${API_BASE}/dashboard?startDate=${startDate}&endDate=${endDate}`)
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to load dashboard');
-          return res.json();
-        })
-        .then(data => {
-          renderKpis(data.statusCounts);
-          renderBoard(data.board);
-        })
-        .catch(err => {
-          console.error('Dashboard error:', err);
-          renderKpis();
-          renderBoard();
-        });
-    }
-
-    function renderKpis(counts) {
-      if (!counts) {
-        const fallbackCounts = {};
-        STATUS.forEach(s => fallbackCounts[s] = state.records.filter(r => r.status === s).length);
-        counts = fallbackCounts;
-      }
-      const cards = [
-        ["Goods Received", counts["Goods Received"] || 0, "New depot receipts", "blue"],
-        ["Location Assigned", counts["Location Assigned"] || 0, "Allocated to cage / zone", "purple"],
-        ["SAP Validated", counts["SAP Validated"] || 0, "SAP processing confirmed", "amber"],
-        ["Ready Dispatch", counts["Ready for Dispatch"] || 0, "Cleared for outbound", "green"],
-        ["Dispatched", counts["Dispatched"] || 0, "Left ELX depot", "dark"],
-        ["Delivered", counts["Delivered"] || 0, "Site delivery completed", "green"],
-        ["Ready to Invoice", counts["Ready to Invoice"] || 0, "Billing queue", "purple"]
-      ];
-      $("kpiSection").innerHTML = cards.map(c => `<div class="kpi ${c[3]}"><div class="label">${c[0]}</div><div class="value">${c[1]}</div><div class="hint">${c[2]}</div></div>`).join("");
-    }
-
-    function boardCardHtmlFromApi(r) {
-      return `<div class="item-card" data-id="${esc(r.id)}">
-        <div class="item-top">
-          <div>
-            <div class="item-id">${esc(r.id)}</div>
-            <div class="supplier">${esc(r.supplier)}</div>
-          </div>
-        </div>
-        <div class="card-row"><span>PO</span><strong>${esc(r.po||"-")}</strong></div>
-        <div class="card-row"><span>Destination</span><strong>${esc(r.site)}</strong></div>
-        <div class="card-row"><span>Qty</span><strong>${r.totalQty || 0}</strong></div>
-      </div>`;
+    function renderKpis() {
+      const counts={}; STATUS.forEach(s=>counts[s]=state.records.filter(r=>r.status===s).length);
+      const cards=[ ["Goods Received",counts["Goods Received"],"New depot receipts","blue"], ["Location Assigned",counts["Location Assigned"],"Allocated to cage / zone","purple"], ["SAP Validated",counts["SAP Validated"],"SAP processing confirmed","amber"], ["Ready Dispatch",counts["Ready for Dispatch"],"Cleared for outbound","green"], ["Dispatched",counts["Dispatched"],"Left ELX depot","dark"], ["Delivered",counts["Delivered"],"Site delivery completed","green"], ["Ready to Invoice",counts["Ready to Invoice"],"Billing queue","purple"] ];
+      $("kpiSection").innerHTML=cards.map(c=>`<div class="kpi ${c[3]}"><div class="label">${c[0]}</div><div class="value">${c[1]}</div><div class="hint">${c[2]}</div></div>`).join("");
     }
 
     function boardCardHtml(r) {
-      return `<div class="item-card" data-id="${esc(r.id)}">
-        <div class="item-top">
-          <div>
-            <div class="item-id">${esc(r.id)}</div>
-            <div class="supplier">${esc(r.supplier)}</div>
-          </div>
-        </div>
-        <div class="card-row"><span>PO</span><strong>${esc(r.po||"-")}</strong></div>
-        <div class="card-row"><span>Destination</span><strong>${esc(r.site)}</strong></div>
-        <div class="card-row"><span>Qty</span><strong>${totalQty(r)}</strong></div>
-      </div>`;
+      return `<div class="item-card" data-id="${esc(r.id)}"><div class="item-top"><div><div class="item-id">${esc(r.id)}</div><div class="supplier">${esc(r.supplier)}</div></div></div><div class="card-row"><span>PO</span><strong>${esc(r.po||"-")}</strong></div><div class="card-row"><span>Destination</span><strong>${esc(r.site)}</strong></div><div class="card-row"><span>Qty</span><strong>${totalQty(r)}</strong></div></div>`;
     }
 
-    function renderBoard(boardData) {
-      if (!boardData) {
-        const lanes = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
-        $("workloadBoard").innerHTML = lanes.map(s => {
-          const rows = state.records.filter(r => r.status === s);
-          return `<div class="lane"><div class="lane-head"><div class="lane-title">${s}</div><div class="lane-count">${rows.length}</div></div><div class="lane-cards">${rows.map(boardCardHtml).join("")}</div></div>`;
-        }).join("");
-        document.querySelectorAll("#workloadBoard .item-card").forEach(c => c.onclick = () => openMove(c.dataset.id));
-        return;
-      }
-      const lanes = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
-      $("workloadBoard").innerHTML = lanes.map(status => {
-        const lane = boardData.find(b => b.status === status);
-        const receipts = lane ? lane.receipts : [];
-        const count = lane ? lane.count : 0;
-        return `<div class="lane"><div class="lane-head"><div class="lane-title">${status}</div><div class="lane-count">${count}</div></div><div class="lane-cards">${receipts.map(r => boardCardHtmlFromApi(r)).join("")}</div></div>`;
-      }).join("");
-      document.querySelectorAll("#workloadBoard .item-card").forEach(c => c.onclick = () => openMove(c.dataset.id));
+    function renderBoard() {
+      const lanes=["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
+      $("workloadBoard").innerHTML=lanes.map(s=>{ const rows=state.records.filter(r=>r.status===s); return `<div class="lane"><div class="lane-head"><div class="lane-title">${s}</div><div class="lane-count">${rows.length}</div></div><div class="lane-cards">${rows.map(boardCardHtml).join("")}</div></div>`; }).join("");
+      document.querySelectorAll("#workloadBoard .item-card").forEach(c=>c.onclick=()=>openMove(c.dataset.id));
     }
 
-    // ========== RENDER TRACKING ==========
+    function renderLocations() {
+      $("largeWarehouseMap").innerHTML=state.locations.map((loc,i)=>{ const rows=state.records.filter(r=>r.location===loc); return `<div class="bay location-cage-card" data-location="${esc(loc)}" style="cursor:pointer;"><div><h4>${esc(loc)}</h4><small>${rows.length ? "Current freight in this location" : "Location currently clear"}</small></div><div class="big">${rows.length}</div></div>`; }).join("");
+      document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; setView("tracking"); renderTracking(); }; });
+    }
+
+    // ========== RENDER TRACKING (API-based) ==========
     function renderTracking() {
       const search = document.getElementById('searchInput').value.trim();
       const statusFilter = document.getElementById('statusFilter').value;
       const location = activeLocationFilter;
-      const { startDate, endDate } = getTrackingDateRange();
 
       let url = `${API_BASE}/receipts?`;
       if (search) url += `search=${encodeURIComponent(search)}&`;
       if (statusFilter) url += `status=${encodeURIComponent(statusFilter)}&`;
       if (location) url += `locationId=${encodeURIComponent(location)}&`;
-      url += `startDate=${encodeURIComponent(startDate)}&`;
-      url += `endDate=${encodeURIComponent(endDate)}&`;
       url += 'page=1&pageSize=100';
 
       document.getElementById('trackingBody').innerHTML = '<tr><td colspan="11">Loading...</td></tr>';
@@ -685,18 +694,13 @@
             `;
           });
           document.getElementById('trackingBody').innerHTML = html || '<tr><td colspan="11">No records found.</td></tr>';
+
           document.querySelectorAll('.updateBtn').forEach(b => b.onclick = () => openMove(b.dataset.id));
         })
         .catch(err => {
           console.error('Tracking error:', err);
           document.getElementById('trackingBody').innerHTML = '<tr><td colspan="11">Error loading data. Please try again.</td></tr>';
         });
-    }
-
-    // ========== OTHER FUNCTIONS (unchanged) ==========
-    function renderLocations() {
-      $("largeWarehouseMap").innerHTML=state.locations.map((loc,i)=>{ const rows=state.records.filter(r=>r.location===loc); return `<div class="bay location-cage-card" data-location="${esc(loc)}" style="cursor:pointer;"><div><h4>${esc(loc)}</h4><small>${rows.length ? "Current freight in this location" : "Location currently clear"}</small></div><div class="big">${rows.length}</div></div>`; }).join("");
-      document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; setView("tracking"); renderTracking(); }; });
     }
 
     function renderTimeline() {
@@ -731,7 +735,8 @@
     }
 
     function renderAll() {
-      loadDashboard();
+      renderKpis();
+      renderBoard();
       renderLocations();
       renderTracking();
       renderTimeline();
@@ -753,6 +758,7 @@
 
     function resetItems() {
       $("itemsBody").innerHTML = "";
+      // No default row – user must click "+ Add Freight Item"
       updateItemSummary();
     }
 
@@ -802,65 +808,376 @@
 
     // ========== RUN OCR ==========
     $("runOcrBtn").onclick = async function() {
-      // ... (unchanged – full version from previous)
-      // For brevity, I'll keep the minimal version – but you have the full code above.
-      // I'll include the full function in the final file provided.
+      if (!selectedFile) {
+        showToast("No image selected");
+        return;
+      }
+
+      $("runOcrBtn").disabled = true;
+      $("runOcrBtn").textContent = "Processing...";
+      $("ocrBadge").textContent = "Processing";
+      $("ocrBadge").className = "badge blue";
+      $("ocrProgress").textContent = "Sending image to Azure AI Document Intelligence...";
+      $("meterBar").style.width = "35%";
+
+      try {
+        const file = selectedFile;
+        let finalBlob = file;
+
+        const isHeic = file.type === "image/heic" || file.type === "image/heif" || (file.name && /\.heic$/i.test(file.name));
+        if (isHeic && window.heic2any) {
+          try {
+            finalBlob = await window.heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+            showToast("HEIC converted to JPEG");
+          } catch (conversionError) {
+            console.warn("HEIC conversion failed:", conversionError);
+            finalBlob = file;
+          }
+        }
+
+        const reader = new FileReader();
+        const base64 = await new Promise((resolve, reject) => {
+          reader.onload = () => {
+            const result = String(reader.result);
+            resolve(result.includes(",") ? result.split(",")[1] : result);
+          };
+          reader.onerror = () => reject(new Error("Could not read image file"));
+          reader.readAsDataURL(finalBlob);
+        });
+
+        $("meterBar").style.width = "55%";
+        $("ocrProgress").textContent = "Azure AI is reading the physical freight label...";
+
+        const ocrResponse = await fetch(`${API_BASE}/OCR`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: base64 })
+        });
+
+        const data = await ocrResponse.json();
+        if (!ocrResponse.ok) throw new Error(data.error || "OCR failed");
+
+        console.log("📋 Full OCR response:", data);
+        const extracted = data.extracted || {};
+        console.log("📦 Extracted freight fields:", extracted);
+        console.log("🔎 Extraction sources:", data.extractionSource || {});
+
+        $("ocrSupplier").value = extracted.supplier || "";
+        $("ocrPo").value = extracted.po || "";
+        $("ocrContractor").value = extracted.contractor || "";
+        $("ocrConnote").value = extracted.connote || "";
+        $("ocrReference").value = extracted.reference || "";
+        $("ocrQty").value = extracted.qty || "";
+        $("ocrWeight").value = extracted.weight || "";
+
+        const siteMap = {
+          "BHP Olympic Dam": "BHP Olympic Dam",
+          "BHP Carrapateena": "BHP Carrapateena",
+          "BHP Prominent Hill": "BHP Prominent Hill"
+        };
+        $("ocrSite").value = siteMap[extracted.site || ""] || "";
+
+        $("ocrItemType").value = "";
+        if (extracted.itemType) {
+          const availableItemTypes = [...$("ocrItemType").options].map(option => option.value);
+          if (availableItemTypes.includes(extracted.itemType)) $("ocrItemType").value = extracted.itemType;
+        }
+
+        $("rawOcr").textContent = data.rawText || "(No raw OCR text returned)";
+        $("ocrBadge").textContent = "AI Extraction Complete";
+        $("ocrBadge").className = "badge green";
+        $("ocrProgress").textContent = "Fields extracted by Azure AI — review before using.";
+        $("meterBar").style.width = "100%";
+        showToast("OCR complete — review extracted fields");
+      } catch (error) {
+        console.error("OCR error:", error);
+        showToast("OCR failed: " + error.message);
+        $("ocrBadge").textContent = "Error";
+        $("ocrBadge").className = "badge red";
+        $("ocrProgress").textContent = error.message;
+        $("meterBar").style.width = "0%";
+      } finally {
+        $("runOcrBtn").disabled = false;
+        $("runOcrBtn").textContent = "Extract Fields";
+      }
     };
 
     // ========== USE EXTRACTED FIELDS ==========
     $("useOcrBtn").onclick = function() {
-      // ... (unchanged)
+      console.log("✅ Use Extracted Fields clicked");
+
+      const supplier = $("ocrSupplier")?.value.trim() || "";
+      const po = $("ocrPo")?.value.trim() || "";
+      const site = $("ocrSite")?.value || "";
+      const contractor = $("ocrContractor")?.value.trim() || "";
+      const connote = $("ocrConnote")?.value.trim() || "";
+      const reference = $("ocrReference")?.value.trim() || "";
+      const itemType = $("ocrItemType")?.value || "";
+      const qtyRaw = $("ocrQty")?.value.trim() || "";
+      const weightRaw = $("ocrWeight")?.value.trim() || "";
+
+      let qty = "";
+      if (qtyRaw !== "") {
+        const parsedQty = parseInt(qtyRaw, 10);
+        if (Number.isFinite(parsedQty) && parsedQty > 0) qty = parsedQty;
+      }
+
+      let weight = "";
+      if (weightRaw !== "") {
+        const parsedWeight = parseFloat(weightRaw);
+        if (Number.isFinite(parsedWeight) && parsedWeight >= 0) weight = parsedWeight;
+      }
+
+      console.log("📦 Reviewed OCR values:", { supplier, po, site, contractor, connote, reference, itemType, qty, weight });
+
+      if (supplier) $("supplier").value = supplier;
+      if (po) $("po").value = po;
+      if (site) $("site").value = site;
+      if (contractor) $("contractor").value = contractor;
+      if (connote) $("connote").value = connote;
+      if (reference) $("reference").value = reference;
+
+      const itemsBody = $("itemsBody");
+      itemsBody.innerHTML = "";
+      itemsBody.appendChild(makeItemRow({ type: itemType, qty, weight }));
+      updateItemSummary();
+
+      closeOcr();
+      setView("receive");
+      showToast("OCR fields pre-filled — review and confirm");
     };
 
     // ========== CONFIRM GOODS RECEIVED ==========
     $("confirmReceiveBtn").onclick = async function() {
-      // ... (unchanged)
+      const missing = [];
+      if(!$("supplier").value.trim()) missing.push("Supplier");
+      if(!$("site").value) missing.push("Delivery Site");
+      if(!$("receivedBy").value) missing.push("Received By");
+      if(missing.length) {
+        showToast("Complete: " + missing.join(", "));
+        return;
+      }
+
+      const items = [...document.querySelectorAll("#itemsBody tr")].map(r => ({
+        type: r.querySelector(".itemType").value,
+        qty: Number(r.querySelector(".itemQty").value) || 1,
+        weight: Number(r.querySelector(".itemWeight").value) || 0
+      }));
+
+      const payload = {
+        supplier: $("supplier").value.trim(),
+        site: $("site").value,
+        contractor: $("contractor").value.trim() || null,
+        po: $("po").value.trim() || null,
+        reference: $("reference").value.trim() || null,
+        connote: $("connote").value.trim() || null,
+        notes: $("notes").value.trim() || null,
+        receivedBy: $("receivedBy").value,
+        items: items
+      };
+
+      const btn = $("confirmReceiveBtn");
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+
+      try {
+        const response = await fetch(`${API_BASE}/receipts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to create receipt');
+        }
+
+        const localRecord = {
+          id: data.grNumber,
+          supplier: data.supplier,
+          site: data.site,
+          receivedBy: data.receivedBy,
+          created: data.receivedAt,
+          items: items,
+          receiptToken: data.token,
+          receiptUrl: data.receiptUrl
+        };
+
+        showReceipt(localRecord);
+        clearReceive();
+        showToast(data.grNumber + " created successfully");
+
+      } catch (error) {
+        console.error('Error creating receipt:', error);
+        showToast("Error: " + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Confirm Goods Received";
+      }
     };
 
     // ========== SHOW RECEIPT ==========
     function showReceipt(record) {
-      // ... (unchanged)
+      const url = record.receiptUrl || buildReceiptUrl(record);
+      $("receiptGrNumber").textContent = record.id;
+      $("receiptSupplier").value = record.supplier || "";
+      $("receiptSite").value = record.site || "";
+      $("receiptReceivedBy").value = record.receivedBy || "";
+      $("receiptDateTime").value = new Date(record.created).toLocaleString();
+      $("receiptItemsBody").innerHTML = (record.items || []).map(i => `<tr><td>${esc(i.type || "Freight")}</td><td>${Number(i.qty)||0}</td><td>${Number(i.weight)||0} kg</td></tr>`).join("");
+      $("receiptUrlText").textContent = url;
+      $("receiptQr").innerHTML = "";
+      if (window.QRCode) {
+        new QRCode($("receiptQr"), { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+      } else {
+        $("receiptQr").innerHTML = '<div class="detail-box">QR library unavailable</div>';
+      }
+      $("openReceiptBtn").onclick = () => openReceiptPage(record, url);
+      $("printReceiptBtn").onclick = () => printReceipt(record, url);
+      $("receiptModal").classList.add("open");
+    }
+
+    function openReceiptPage(record, url) {
+      const items = (record.items||[]).map(i => `<tr><td>${esc(i.type)}</td><td>${Number(i.qty)||0}</td><td>${Number(i.weight)||0} kg</td></tr>`).join("");
+      const receiptHtml = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${record.id} Receipt</title><style>body{font-family:Segoe UI,Arial,sans-serif;background:#f4f6f8;margin:0;padding:24px;color:#101827}.card{max-width:760px;margin:auto;background:white;border-radius:20px;padding:24px;box-shadow:0 16px 44px rgba(0,0,0,.08)}.brand{font-weight:900;font-size:22px}.brand span{color:#d71920}.ok{margin:18px 0;padding:14px;border-radius:14px;background:#ecfdf5;color:#047857;font-weight:800}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left}th{background:#f8fafc;font-size:12px;text-transform:uppercase;color:#64748b}.meta{color:#64748b;font-size:13px;line-height:1.6}.ref{font-size:24px;font-weight:900;margin:8px 0 16px}.footer{margin-top:22px;color:#64748b;font-size:12px}</style></head><body><div class="card"><div class="brand">Energy <span>LogistiX</span></div><div class="ok">✓ Goods received by Energy LogistiX</div><div class="meta">ELX Reference</div><div class="ref">${record.id}</div><div class="meta">Received: ${new Date(record.created).toLocaleString()}<br>Received at: 7 Creswell Rd, Largs North SA 5016<br>Supplier: ${esc(record.supplier)}<br>Destination: ${esc(record.site)}<br>Received by: ${esc(record.receivedBy)}</div><table><thead><tr><th>Item</th><th>Qty</th><th>Weight</th></tr></thead><tbody>${items}</tbody></table><div class="footer">Supplier Proof of Delivery / Goods Received receipt.</div></div></body></html>`;
+      const w = window.open("", "_blank");
+      if (!w) { showToast("Pop-up blocked — allow pop-ups to preview receipt"); return; }
+      w.document.open();
+      w.document.write(receiptHtml);
+      w.document.close();
+    }
+
+    function printReceipt(record, url) {
+      openReceiptPage(record, url);
+      showToast("Receipt opened — use browser Print → Save as PDF");
     }
 
     // ========== LEGACY HELPERS ==========
-    function nextId() { /* ... */ }
-    function makeReceiptToken() { /* ... */ }
-    function buildReceiptUrl(record) { /* ... */ }
+    function nextId() {
+      const d=new Date();
+      const p=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+      const nums=state.records.filter(r=>r.id.includes(p)).map(r=>Number(r.id.split("-").pop())).filter(Number.isFinite);
+      return `ELX-GR-${p}-${String(Math.max(0,...nums)+1).padStart(5,"0")}`;
+    }
+    function makeReceiptToken() {
+      const bytes = new Uint8Array(18);
+      if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
+      else for (let i=0;i<bytes.length;i++) bytes[i]=Math.floor(Math.random()*256);
+      return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
+    }
+    function buildReceiptUrl(record) {
+      const token = record.receiptToken || makeReceiptToken();
+      record.receiptToken = token;
+      return `https://receipt.energylogistix.com.au/r/${token}`;
+    }
 
     // ========== MODAL CONTROLS ==========
     function openOcr() { $("receiveModal").classList.add("open"); }
     function closeOcr() { $("receiveModal").classList.remove("open"); }
     function closeMove() { $("moveModal").classList.remove("open"); }
 
-    // ========== OPEN MOVE ==========
+    // ========== UPDATED: OPEN MOVE (populates dropdowns) ==========
     function openMove(id) {
-      // ... (unchanged – full version)
+        let r = state.records.find(x => x.id === id);
+
+        if (!r) {
+            const rows = document.querySelectorAll('#trackingBody tr');
+            for (const row of rows) {
+                const grNumber = row.querySelector('td:first-child strong')?.textContent;
+                if (grNumber === id) {
+                    const cells = row.querySelectorAll('td');
+                    r = {
+                        id: grNumber,
+                        supplier: cells[1]?.textContent || '',
+                        site: cells[3]?.textContent || '',
+                        status: cells[8]?.textContent || '',
+                        location: cells[7]?.textContent || '',
+                        receivedBy: state.staff[0] || 'ELX Warehouse Admin'
+                    };
+                    break;
+                }
+            }
+        }
+
+        if (!r) {
+            showToast('Record not found');
+            return;
+        }
+
+        selectedId = id;
+        $("moveTitle").textContent = `${r.id} · ${r.supplier} · ${r.site}`;
+
+        // Populate Status dropdown
+        const statusSelect = document.getElementById('moveStatus');
+        if (statusSelect) {
+            // Clear and repopulate to ensure all statuses are present
+            statusSelect.innerHTML = '';
+            STATUS.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                statusSelect.appendChild(opt);
+            });
+            statusSelect.value = r.status || 'Goods Received';
+        }
+
+        // Populate Location dropdown
+        const locationSelect = document.getElementById('moveLocation');
+        if (locationSelect) {
+            locationSelect.innerHTML = '';
+            state.locations.forEach(loc => {
+                const opt = document.createElement('option');
+                opt.value = loc;
+                opt.textContent = loc;
+                locationSelect.appendChild(opt);
+            });
+            locationSelect.value = r.location || 'General Receiving Area';
+        }
+
+        // Populate User dropdown
+        const userSelect = document.getElementById('moveUser');
+        if (userSelect) {
+            userSelect.innerHTML = '';
+            state.staff.forEach(staff => {
+                const opt = document.createElement('option');
+                opt.value = staff;
+                opt.textContent = staff;
+                userSelect.appendChild(opt);
+            });
+            userSelect.value = r.receivedBy || state.staff[0] || 'ELX Warehouse Admin';
+        }
+
+        $("moveNote").value = "";
+        $("moveModal").classList.add("open");
     }
 
-    // ========== SAVE MOVE ==========
-    $("saveMoveBtn").onclick = async function() {
-      // ... (unchanged)
-    };
+    // ========== EVENT BINDINGS ==========
+    $("chooseImageBtn").onclick = () => $("imageInput").click();
+    $("nav").addEventListener("click", function(e) { const n = e.target.closest(".nav-item"); if(n) setView(n.dataset.view); });
+    $("startReceiveScan").onclick = openOcr;
+    $("closeModal").onclick = $("cancelOcrBtn").onclick = closeOcr;
+    $("closeMoveModal").onclick = $("cancelMoveBtn").onclick = closeMove;
+    $("closeReceiptModal").onclick = $("doneReceiptBtn").onclick = function() { $("receiptModal").classList.remove("open"); setView("dashboard"); };
+    $("clearReceiveBtn").onclick = clearReceive;
 
-    // ========== DATE RANGE EVENT BINDINGS ==========
-    document.getElementById('dashboardDateBtn').onclick = loadDashboard;
-    document.getElementById('dashboardDateReset').onclick = function() {
-      const today = getToday();
-      setDashboardDates(today, today);
-      loadDashboard();
+    // ========== SAVE MOVE (legacy) ==========
+    $("saveMoveBtn").onclick = function() {
+      const r = state.records.find(x => x.id === selectedId);
+      if(!r) return;
+      const oldStatus = r.status;
+      const oldLocation = r.location;
+      const now = new Date().toISOString();
+      r.status = $("moveStatus").value;
+      r.location = $("moveLocation").value;
+      r.updated = now;
+      r.events = r.events || [];
+      r.events.push({ time: now, event: `${oldStatus} → ${r.status}`, user: $("moveUser").value, location: r.location, status: r.status, note: $("moveNote").value.trim() || `Location: ${oldLocation} → ${r.location}` });
+      saveState();
+      closeMove();
+      renderAll();
+      showToast("Freight updated — dashboard refreshed");
     };
-
-    document.getElementById('trackingDateBtn').onclick = renderTracking;
-    document.getElementById('trackingDateReset').onclick = function() {
-      const today = getToday();
-      setTrackingDates(today, today);
-      renderTracking();
-    };
-
-    // Set default dates to today
-    const today = getToday();
-    setDashboardDates(today, today);
-    setTrackingDates(today, today);
 
     // ========== ADMIN ==========
     $("addStaffBtn").onclick = function() {
