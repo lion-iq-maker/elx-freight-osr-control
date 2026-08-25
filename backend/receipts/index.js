@@ -11,7 +11,7 @@ module.exports = async function (context, req) {
         return;
     }
 
-    // --- GET: list receipts with item summaries ---
+    // --- GET: list receipts with item summaries (with date filter) ---
     if (req.method === 'GET') {
         return handleGet(context, req, connectionString);
     }
@@ -32,7 +32,7 @@ module.exports = async function (context, req) {
     };
 };
 
-// ========== HANDLE GET ==========
+// ========== HANDLE GET (with date filter) ==========
 async function handleGet(context, req, connectionString) {
     try {
         const pool = await sql.connect(connectionString);
@@ -40,6 +40,9 @@ async function handleGet(context, req, connectionString) {
         const search = req.query.search || '';
         const status = req.query.status || '';
         const locationId = req.query.locationId || '';
+        const dateFilter = req.query.date || new Date().toISOString().slice(0, 10);
+        const startDate = dateFilter + 'T00:00:00Z';
+        const endDate = dateFilter + 'T23:59:59Z';
         const page = parseInt(req.query.page) || 1;
         const pageSize = parseInt(req.query.pageSize) || 50;
         const offset = (page - 1) * pageSize;
@@ -100,6 +103,11 @@ async function handleGet(context, req, connectionString) {
             params.push({ name: 'locationId', value: parseInt(locationId), type: sql.Int });
         }
 
+        // Date filter
+        conditions.push(`r.received_at_utc BETWEEN @startDate AND @endDate`);
+        params.push({ name: 'startDate', value: startDate, type: sql.DateTime2 });
+        params.push({ name: 'endDate', value: endDate, type: sql.DateTime2 });
+
         if (conditions.length > 0) {
             baseQuery += ' AND ' + conditions.join(' AND ');
         }
@@ -113,7 +121,7 @@ async function handleGet(context, req, connectionString) {
         }
         const result = await request.query(query);
 
-        // Total count for pagination
+        // Total count
         let countQuery = `
             SELECT COUNT(*) AS total
             FROM FreightReceipts r
@@ -155,7 +163,6 @@ async function handleTransition(context, req, connectionString) {
         const grNumber = req.params.grNumber;
         const body = req.body || {};
 
-        // Required fields
         if (!body.targetStatus) {
             context.res = {
                 status: 400,
@@ -176,7 +183,6 @@ async function handleTransition(context, req, connectionString) {
         await transaction.begin();
 
         try {
-            // 1. Get the receipt
             const receiptResult = await transaction.request()
                 .input('grNumber', sql.NVarChar, grNumber)
                 .query(`
@@ -195,7 +201,6 @@ async function handleTransition(context, req, connectionString) {
             const oldLocationId = receipt.current_location_id;
             const oldLocationName = receipt.locationName || 'Unknown';
 
-            // 2. Look up location ID (if location provided, else keep current)
             let newLocationId = null;
             if (body.location) {
                 const locResult = await transaction.request()
@@ -209,7 +214,6 @@ async function handleTransition(context, req, connectionString) {
                 newLocationId = oldLocationId;
             }
 
-            // 3. Look up staff user ID
             const staffResult = await transaction.request()
                 .input('displayName', sql.NVarChar, body.receivedBy)
                 .query(`SELECT id FROM Staff WHERE display_name = @displayName`);
@@ -218,7 +222,6 @@ async function handleTransition(context, req, connectionString) {
             }
             const userId = staffResult.recordset[0].id;
 
-            // 4. Update the receipt
             const now = new Date().toISOString();
             await transaction.request()
                 .input('grNumber', sql.NVarChar, grNumber)
@@ -233,7 +236,6 @@ async function handleTransition(context, req, connectionString) {
                     WHERE gr_number = @grNumber
                 `);
 
-            // 5. Insert lifecycle event
             const eventNote = body.note || `Status: ${oldStatus} → ${body.targetStatus} | Location: ${oldLocationName} → ${body.location || oldLocationName}`;
             await transaction.request()
                 .input('receiptId', sql.BigInt, receipt.id)
@@ -290,7 +292,7 @@ async function handleTransition(context, req, connectionString) {
     }
 }
 
-// ========== HANDLE POST (Create Receipt) – YOUR EXISTING LOGIC ==========
+// ========== HANDLE POST (Create Receipt) ==========
 async function handlePost(context, req, connectionString) {
     const body = req.body || {};
     const required = ['supplier', 'site', 'receivedBy'];
