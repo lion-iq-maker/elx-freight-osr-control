@@ -376,7 +376,6 @@
         <div class="nav-item active" data-view="dashboard"><span class="nav-icon">▦</span>Dashboard</div>
         <div class="nav-item" data-view="receive"><span class="nav-icon">＋</span>Goods Received</div>
         <div class="nav-item" data-view="tracking"><span class="nav-icon">⌕</span>Freight Tracking</div>
-        <div class="nav-item" data-view="locations"><span class="nav-icon">▤</span>Locations / Cages</div>
         <div class="nav-item" data-view="timeline"><span class="nav-icon">◷</span>Audit Timeline</div>
         <div class="nav-item" data-view="reports"><span class="nav-icon">▥</span>Reports</div>
         <div class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Admin / Settings</div>
@@ -461,8 +460,9 @@
                 <input type="date" id="trackingDateTo" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;">
                 <button class="btn btn-light" id="trackingDateBtn" style="padding:6px 12px;font-size:10px;">Apply</button>
                 <button class="btn btn-ghost" id="trackingDateReset" style="padding:6px 12px;font-size:10px;">Today</button>
-                <span class="small-pill" id="locationFilterPill" style="display:none;"></span>
-                <button class="btn btn-light" id="clearLocationFilterBtn" style="display:none;">Clear Cage Filter</button>
+                <select id="locationFilter" class="status-select">
+                  <option value="">All Locations</option>
+                </select>
               </div>
               <div class="table-wrap">
                 <table>
@@ -813,7 +813,7 @@
     async function renderTracking() {
         const search = document.getElementById('searchInput').value.trim();
         const statusFilter = document.getElementById('statusFilter').value;
-        const location = activeLocationFilter;
+        const location = document.getElementById('locationFilter').value || activeLocationFilter;
         const from = document.getElementById('trackingDateFrom').value || getLocalToday();
         const to = document.getElementById('trackingDateTo').value || from;
         const dates = getInclusiveDates(from, to);
@@ -884,7 +884,7 @@
     // ========== OTHER FUNCTIONS (unchanged) ==========
     function renderLocations() {
       $("largeWarehouseMap").innerHTML=state.locations.map((loc,i)=>{ const rows=state.records.filter(r=>r.location===loc); return `<div class="bay location-cage-card" data-location="${esc(loc)}" style="cursor:pointer;"><div><h4>${esc(loc)}</h4><small>${rows.length ? "Current freight in this location" : "Location currently clear"}</small></div><div class="big">${rows.length}</div></div>`; }).join("");
-      document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; setView("tracking"); renderTracking(); }; });
+      document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; if ($("locationFilter")) $("locationFilter").value = activeLocationFilter; setView("tracking"); renderTracking(); }; });
     }
 
     function renderTimeline() {
@@ -1424,9 +1424,10 @@
     };
 
     $("statusFilter").innerHTML = '<option value="">All statuses</option>' + STATUS.map(s => `<option>${s}</option>`).join("");
+    $("locationFilter").innerHTML = '<option value="">All Locations</option>' + state.locations.map(loc => `<option value="${esc(loc)}">${esc(loc)}</option>`).join("");
     $("searchInput").addEventListener("input", renderTracking);
     $("statusFilter").addEventListener("change", renderTracking);
-    $("clearLocationFilterBtn").onclick = function() { activeLocationFilter = ""; renderTracking(); };
+    $("locationFilter").addEventListener("change", function() { activeLocationFilter = this.value; renderTracking(); });
 
     function refreshTimestamp() { $("timestampText").textContent = "Automatic timestamp: " + new Date().toLocaleString(); }
     setInterval(refreshTimestamp, 1000);
