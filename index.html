@@ -497,7 +497,7 @@
         <!-- Timeline -->
         <div class="view" id="view-timeline">
           <div class="tab-grid">
-            <div class="panel fill"><div class="panel-head"><div><h3>Freight Records</h3><p>Select a GR to view the full audit trail.</p></div></div><div class="scroll-area"><div class="card-list" id="timelineRecordList"></div></div></div>
+            <div class="panel fill"><div class="panel-head"><div><h3>Freight Records</h3><p>Select a GR to view the full audit trail.</p></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><label style="font-size:10px;font-weight:850;color:var(--muted);">From:</label><input type="date" id="timelineDateFrom" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:10px;"><label style="font-size:10px;font-weight:850;color:var(--muted);">To:</label><input type="date" id="timelineDateTo" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:10px;"><button class="btn btn-light" id="timelineDateBtn" style="padding:6px 10px;font-size:9px;">Apply</button><button class="btn btn-ghost" id="timelineDateReset" style="padding:6px 10px;font-size:9px;">Today</button></div></div><div class="scroll-area"><div class="card-list" id="timelineRecordList"></div></div></div>
             <div class="panel fill"><div class="panel-head"><div><h3>Audit Timeline</h3><p>Every major action, user, timestamp, location and status.</p></div></div><div class="timeline-scroll"><div id="timelineSummary"></div><div class="timeline-list" id="itemTimeline" style="margin-top:10px;"></div></div></div>
           </div>
         </div>
@@ -871,46 +871,78 @@
       document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; if ($("locationFilter")) $("locationFilter").value = activeLocationFilter; setView("tracking"); renderTracking(); }; });
     }
 
-    // ========== UPDATED RENDER TIMELINE (Azure API) ==========
+    // ========== UPDATED RENDER TIMELINE (Azure API + date range) ==========
     async function renderTimeline() {
         const listContainer = document.getElementById('timelineRecordList');
+        const from = document.getElementById('timelineDateFrom')?.value || getLocalToday();
+        const to = document.getElementById('timelineDateTo')?.value || from;
+        const dates = getInclusiveDates(from, to);
+        if (!dates) return;
+
         listContainer.innerHTML = '<div style="padding:12px;color:#64748b;">Loading receipts...</div>';
+
         try {
-            const res = await fetch(`${API_BASE}/receipts?page=1&pageSize=200`);
-            if (!res.ok) throw new Error('Failed to fetch timeline records');
-            const data = await res.json();
-            const records = data.records || [];
+            const dailyResults = await Promise.all(
+                dates.map(async date => {
+                    const res = await fetch(`${API_BASE}/receipts?date=${encodeURIComponent(date)}&page=1&pageSize=200`);
+                    if (!res.ok) {
+                        const errorText = await res.text();
+                        throw new Error(`HTTP ${res.status}: ${errorText}`);
+                    }
+                    return res.json();
+                })
+            );
+
+            const recordMap = new Map();
+            dailyResults.forEach(data => {
+                (data.records || []).forEach(r => {
+                    const key = r.id || r.grNumber || JSON.stringify(r);
+                    recordMap.set(key, r);
+                });
+            });
+
+            const records = [...recordMap.values()].sort((a, b) => {
+                const aTime = new Date(a.updatedAt || a.receivedAt || 0).getTime();
+                const bTime = new Date(b.updatedAt || b.receivedAt || 0).getTime();
+                return bTime - aTime;
+            });
+
             if (records.length === 0) {
-                listContainer.innerHTML = '<div style="padding:12px;color:#64748b;">No receipts found.</div>';
+                listContainer.innerHTML = '<div style="padding:12px;color:#64748b;">No receipts found for this date range.</div>';
+                document.getElementById('timelineSummary').innerHTML = '';
+                document.getElementById('itemTimeline').innerHTML = '';
+                selectedId = null;
                 return;
             }
+
             let html = '';
             records.forEach(r => {
                 const totalQty = r.totalQty || 0;
+                const recordId = r.id || r.grNumber;
                 html += `
-                    <div class="mini-card timelineRecord" data-id="${esc(r.id)}">
-                        <strong>${esc(r.id)}</strong>
+                    <div class="mini-card timelineRecord" data-id="${esc(recordId)}">
+                        <strong>${esc(recordId)}</strong>
                         <p style="color:#64748b;font-size:12px;margin:5px 0 0;">
                             ${esc(r.supplier)} · ${esc(r.status)} · Qty: ${totalQty}
                         </p>
-                        <small style="color:#94a3b8;font-size:10px;">${fmt(r.updatedAt)}</small>
+                        <small style="color:#94a3b8;font-size:10px;">${fmt(r.updatedAt || r.receivedAt)}</small>
                     </div>
                 `;
             });
+
             listContainer.innerHTML = html;
             document.querySelectorAll('.timelineRecord').forEach(el => {
                 el.onclick = () => showTimeline(el.dataset.id);
             });
-            if (!selectedId && records.length > 0) {
-                selectedId = records[0].id;
-                showTimeline(selectedId, false);
-            } else if (selectedId) {
-                showTimeline(selectedId, false);
-            }
+
+            const selectedStillVisible = selectedId && records.some(r => (r.id || r.grNumber) === selectedId);
+            if (!selectedStillVisible) selectedId = records[0].id || records[0].grNumber;
+            if (selectedId) showTimeline(selectedId, false);
+
         } catch (err) {
             console.error('Timeline list error:', err);
-            listContainer.innerHTML = '<div style="padding:12px;color:#b91c1c;">Error loading records.</div>';
-            // fallback to localStorage
+            listContainer.innerHTML = `<div style="padding:12px;color:#b91c1c;">Error loading records: ${esc(err.message)}</div>`;
+            // Preserve the existing fallback behaviour.
             fallbackTimeline();
         }
     }
@@ -933,7 +965,10 @@
 
         try {
             const res = await fetch(`${API_BASE}/receipts/${id}`);
-            if (!res.ok) throw new Error('Failed to fetch timeline details');
+            if (!res.ok) {
+                const errorText = await res.text();
+                throw new Error(`HTTP ${res.status}: ${errorText}`);
+            }
             const receipt = await res.json();
 
             summaryDiv.innerHTML = `
@@ -977,9 +1012,9 @@
 
         } catch (err) {
             console.error('Timeline detail error:', err);
-            summaryDiv.innerHTML = '<div style="padding:12px;color:#b91c1c;">Error loading timeline.</div>';
+            summaryDiv.innerHTML = `<div style="padding:12px;color:#b91c1c;">Error: ${esc(err.message)}</div>`;
             eventsDiv.innerHTML = '';
-            // fallback to localStorage
+            // Preserve the existing fallback behaviour.
             fallbackShowTimeline(id, setSelected);
         }
     }
@@ -1497,12 +1532,23 @@
         renderTracking();
     };
 
+    document.getElementById('timelineDateBtn').onclick = renderTimeline;
+    document.getElementById('timelineDateReset').onclick = function() {
+        const today = getLocalToday();
+        document.getElementById('timelineDateFrom').value = today;
+        document.getElementById('timelineDateTo').value = today;
+        selectedId = null;
+        renderTimeline();
+    };
+
     // Default range = today only
     const defaultToday = getLocalToday();
     document.getElementById('dashboardDateFrom').value = defaultToday;
     document.getElementById('dashboardDateTo').value = defaultToday;
     document.getElementById('trackingDateFrom').value = defaultToday;
     document.getElementById('trackingDateTo').value = defaultToday;
+    document.getElementById('timelineDateFrom').value = defaultToday;
+    document.getElementById('timelineDateTo').value = defaultToday;
 
     // Populate location filter
     $("locationFilter").innerHTML = '<option value="">All Locations</option>' + state.locations.map(loc => `<option value="${esc(loc)}">${esc(loc)}</option>`).join("");
