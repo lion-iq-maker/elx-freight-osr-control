@@ -508,17 +508,52 @@
     }
 
   
-    /* ===== Receipt popup: vertical, no horizontal scroll (PC + iPad) ===== */
+    /* ===== Receipt popup: compact one-screen layout (PC + iPad) ===== */
+    /* Scoped ONLY to the Goods Received Receipt popup. Other tables/screens stay unchanged. */
     #receiptModal {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      height: 100dvh !important;
+      padding: 8px !important;
+      align-items: center !important;
+      justify-content: center !important;
       overflow: hidden !important;
+      overscroll-behavior: contain;
     }
 
     #receiptModal .modal {
-      width: min(760px, calc(100vw - 28px)) !important;
-      max-width: calc(100vw - 28px) !important;
-      max-height: calc(100vh - 28px) !important;
+      width: min(820px, calc(100vw - 16px)) !important;
+      max-width: calc(100vw - 16px) !important;
+      height: auto !important;
+      max-height: calc(100vh - 16px) !important;
+      max-height: calc(100dvh - 16px) !important;
+      min-width: 0 !important;
       overflow: hidden !important;
+      display: grid !important;
       grid-template-rows: auto minmax(0, 1fr) auto !important;
+    }
+
+    #receiptModal .modal-head {
+      padding: 10px 14px !important;
+      min-height: 0 !important;
+    }
+
+    #receiptModal .modal-head h3 {
+      font-size: 17px !important;
+    }
+
+    #receiptModal .modal-head p {
+      margin-top: 2px !important;
+      font-size: 10.5px !important;
+      line-height: 1.25 !important;
+    }
+
+    #receiptModal .close {
+      width: 32px !important;
+      height: 32px !important;
+      flex: 0 0 32px !important;
     }
 
     #receiptModal .receipt-modal-body {
@@ -527,10 +562,11 @@
       max-width: 100% !important;
       min-width: 0 !important;
       min-height: 0 !important;
-      overflow-y: auto !important;
+      padding: 9px 12px !important;
       overflow-x: hidden !important;
-      padding: 14px 16px 16px !important;
+      overflow-y: auto !important;
       -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
 
     #receiptModal .receipt-modal-body > div {
@@ -539,46 +575,51 @@
       min-width: 0 !important;
     }
 
-    #receiptModal .qr-panel {
+    #receiptModal .receipt-success {
       width: 100% !important;
-      max-width: 100% !important;
-      min-width: 0 !important;
-      margin-top: 12px !important;
-      padding: 14px !important;
-      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 9px 11px !important;
+      border-radius: 13px !important;
     }
 
-    #receiptModal #receiptQr {
-      min-height: 0 !important;
-      padding: 8px 0 !important;
+    #receiptModal .receipt-success h4 {
+      margin: 0 0 2px !important;
+      font-size: 14px !important;
     }
 
-    #receiptModal #receiptQr img,
-    #receiptModal #receiptQr canvas {
-      width: 180px !important;
-      height: 180px !important;
-      max-width: 48vw !important;
-      max-height: 48vw !important;
+    #receiptModal .receipt-success p {
+      font-size: 10px !important;
+      line-height: 1.25 !important;
     }
 
-    #receiptModal .receipt-url {
-      width: 100% !important;
-      max-width: 100% !important;
-      overflow-wrap: anywhere !important;
-      word-break: break-word !important;
-      white-space: normal !important;
-    }
-
-    #receiptModal .detail-box,
-    #receiptModal .receipt-success,
     #receiptModal .receipt-ref {
       width: 100% !important;
+      margin-top: 7px !important;
+      padding: 8px 10px !important;
+      border-radius: 12px !important;
+    }
+
+    #receiptModal .receipt-ref small {
+      font-size: 9px !important;
+    }
+
+    #receiptModal .receipt-ref strong {
+      margin-top: 2px !important;
+      font-size: 16px !important;
+    }
+
+    #receiptModal .detail-box {
+      width: 100% !important;
       max-width: 100% !important;
       min-width: 0 !important;
+      margin-top: 7px !important;
+      padding: 8px 10px !important;
+      border-radius: 13px !important;
     }
 
     #receiptModal .field-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+      gap: 6px !important;
       width: 100% !important;
       min-width: 0 !important;
     }
@@ -589,65 +630,190 @@
       max-width: 100% !important;
     }
 
+    #receiptModal .field label {
+      margin-bottom: 2px !important;
+      font-size: 8.5px !important;
+    }
+
+    #receiptModal .field input {
+      min-height: 30px !important;
+      padding: 6px 7px !important;
+      border-radius: 9px !important;
+      font-size: 9.5px !important;
+    }
+
     #receiptModal .receipt-table {
       width: 100% !important;
       min-width: 0 !important;
       max-width: 100% !important;
+      margin-top: 7px !important;
       table-layout: fixed !important;
     }
 
     #receiptModal .receipt-table th,
     #receiptModal .receipt-table td {
+      padding: 5px 7px !important;
+      font-size: 9px !important;
       white-space: normal !important;
       overflow-wrap: anywhere !important;
       word-break: break-word !important;
     }
 
+    #receiptModal .receipt-table th {
+      font-size: 8px !important;
+    }
+
+    /* QR remains below the receipt details, but is compact so normal receipts fit in one popup. */
+    #receiptModal .qr-panel {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      margin-top: 7px !important;
+      padding: 8px 10px !important;
+      border-radius: 13px !important;
+      overflow: hidden !important;
+      display: grid !important;
+      grid-template-columns: 94px minmax(0, 1fr) !important;
+      grid-template-rows: auto auto auto !important;
+      column-gap: 10px !important;
+      row-gap: 4px !important;
+      text-align: left !important;
+      align-items: center !important;
+    }
+
+    #receiptModal .qr-panel > div:first-child {
+      grid-column: 2 !important;
+      grid-row: 1 !important;
+      font-size: 12px !important;
+      text-align: left !important;
+    }
+
+    #receiptModal .qr-panel > p {
+      grid-column: 2 !important;
+      grid-row: 2 !important;
+      margin: 0 !important;
+      font-size: 9px !important;
+      line-height: 1.25 !important;
+      text-align: left !important;
+    }
+
+    #receiptModal #receiptQr {
+      grid-column: 1 !important;
+      grid-row: 1 / span 3 !important;
+      min-height: 0 !important;
+      width: 94px !important;
+      height: 94px !important;
+      padding: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    #receiptModal #receiptQr img,
+    #receiptModal #receiptQr canvas {
+      width: 94px !important;
+      height: 94px !important;
+      max-width: 94px !important;
+      max-height: 94px !important;
+    }
+
+    #receiptModal .receipt-url {
+      grid-column: 2 !important;
+      grid-row: 3 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 5px 7px !important;
+      font-size: 8px !important;
+      line-height: 1.15 !important;
+      max-height: 34px !important;
+      overflow: hidden !important;
+      overflow-wrap: anywhere !important;
+      word-break: break-all !important;
+      white-space: normal !important;
+    }
+
+    #receiptModal .qr-panel > div:last-child {
+      grid-column: 1 / -1 !important;
+      grid-row: 4 !important;
+      margin-top: 3px !important;
+      display: flex !important;
+      justify-content: flex-end !important;
+      gap: 6px !important;
+      flex-wrap: nowrap !important;
+    }
+
+    #receiptModal .qr-panel .btn {
+      padding: 6px 9px !important;
+      font-size: 9px !important;
+      min-height: 30px !important;
+    }
+
     #receiptModal .modal-actions {
       width: 100% !important;
+      padding: 7px 12px 9px !important;
       overflow: hidden !important;
     }
 
-    @media (max-width: 700px) {
-      #receiptModal .field-grid {
-        grid-template-columns: 1fr !important;
-      }
+    #receiptModal .modal-actions .btn {
+      padding: 7px 12px !important;
+      font-size: 10px !important;
+      min-height: 32px !important;
     }
 
+    /* iPad / touch landscape: lock the popup to the visible viewport so it opens once at full size. */
     @media (min-width: 700px) and (max-width: 1366px) and (pointer: coarse) {
+      #receiptModal {
+        height: 100dvh !important;
+        min-height: 100dvh !important;
+        max-height: 100dvh !important;
+        padding: 6px !important;
+      }
+
       #receiptModal .modal {
-        width: min(720px, calc(100vw - 20px)) !important;
-        max-width: calc(100vw - 20px) !important;
-        max-height: calc(100dvh - 20px) !important;
+        width: min(800px, calc(100vw - 12px)) !important;
+        max-width: calc(100vw - 12px) !important;
+        max-height: calc(100dvh - 12px) !important;
+        margin: 0 !important;
       }
 
       #receiptModal .receipt-modal-body {
-        padding: 10px 12px 12px !important;
+        padding: 7px 9px !important;
+      }
+
+      #receiptModal .modal-head {
+        padding: 8px 11px !important;
+      }
+
+      #receiptModal .receipt-success,
+      #receiptModal .receipt-ref,
+      #receiptModal .detail-box,
+      #receiptModal .qr-panel {
+        margin-top: 5px !important;
       }
 
       #receiptModal .receipt-success {
-        padding: 12px !important;
+        margin-top: 0 !important;
       }
+    }
 
-      #receiptModal .receipt-ref {
-        margin-top: 10px !important;
-        padding: 11px !important;
-      }
-
-      #receiptModal .detail-box {
-        margin-top: 10px !important;
-        padding: 10px !important;
+    /* Portrait/smaller screens: still never scroll sideways; only vertical overflow is allowed. */
+    @media (max-width: 760px), (orientation: portrait) and (max-width: 900px) {
+      #receiptModal .field-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
       }
 
       #receiptModal .qr-panel {
-        margin-top: 10px !important;
-        padding: 10px !important;
+        grid-template-columns: 82px minmax(0, 1fr) !important;
       }
 
+      #receiptModal #receiptQr,
       #receiptModal #receiptQr img,
       #receiptModal #receiptQr canvas {
-        width: 150px !important;
-        height: 150px !important;
+        width: 82px !important;
+        height: 82px !important;
+        max-width: 82px !important;
+        max-height: 82px !important;
       }
     }
 
