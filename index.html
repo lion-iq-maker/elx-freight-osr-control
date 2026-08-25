@@ -606,6 +606,192 @@
       }
     }
 
+  
+
+    /* ===== iPad receipt popup compact fit: keep 1-5 items visible without scrolling ===== */
+    @media (min-width:700px) and (max-width:1180px) and (pointer:coarse) {
+      #receiptModal {
+        padding: 8px !important;
+        align-items: center !important;
+      }
+
+      #receiptModal .modal {
+        width: min(900px, calc(100vw - 16px)) !important;
+        max-width: calc(100vw - 16px) !important;
+        height: auto !important;
+        max-height: calc(100dvh - 16px) !important;
+        grid-template-rows: auto minmax(0, 1fr) auto !important;
+      }
+
+      #receiptModal .modal-head {
+        padding: 8px 11px !important;
+        min-height: 46px !important;
+      }
+
+      #receiptModal .modal-head h3 {
+        font-size: 15px !important;
+      }
+
+      #receiptModal .modal-head p {
+        margin-top: 2px !important;
+        font-size: 9px !important;
+        line-height: 1.2 !important;
+      }
+
+      #receiptModal .close {
+        width: 32px !important;
+        height: 32px !important;
+      }
+
+      #receiptModal .receipt-modal-body {
+        grid-template-columns: minmax(0, 1.15fr) minmax(220px, .85fr) !important;
+        gap: 8px !important;
+        padding: 8px 10px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+      }
+
+      #receiptModal .receipt-success {
+        padding: 10px 12px !important;
+        border-radius: 13px !important;
+      }
+
+      #receiptModal .receipt-success h4 {
+        margin-bottom: 3px !important;
+        font-size: 14px !important;
+      }
+
+      #receiptModal .receipt-success p {
+        font-size: 9.5px !important;
+        line-height: 1.25 !important;
+      }
+
+      #receiptModal .receipt-ref {
+        margin-top: 7px !important;
+        padding: 8px 10px !important;
+        border-radius: 12px !important;
+      }
+
+      #receiptModal .receipt-ref small {
+        font-size: 9px !important;
+      }
+
+      #receiptModal .receipt-ref strong {
+        margin-top: 2px !important;
+        font-size: 16px !important;
+      }
+
+      #receiptModal .detail-box {
+        margin-top: 7px !important;
+        padding: 8px !important;
+        border-radius: 12px !important;
+      }
+
+      #receiptModal .field-grid {
+        gap: 5px !important;
+      }
+
+      #receiptModal .field label {
+        margin-bottom: 2px !important;
+        font-size: 8.5px !important;
+      }
+
+      #receiptModal .field input {
+        min-height: 30px !important;
+        padding: 5px 7px !important;
+        font-size: 9.5px !important;
+      }
+
+      #receiptModal .receipt-table {
+        margin-top: 7px !important;
+      }
+
+      #receiptModal .receipt-table th,
+      #receiptModal .receipt-table td {
+        padding: 5px 7px !important;
+        font-size: 9px !important;
+      }
+
+      #receiptModal .receipt-table th {
+        font-size: 8px !important;
+      }
+
+      #receiptModal .qr-panel {
+        padding: 10px !important;
+        border-radius: 13px !important;
+      }
+
+      #receiptModal .qr-panel > div:first-child {
+        font-size: 12px !important;
+      }
+
+      #receiptModal .qr-panel p {
+        margin: 4px 0 7px !important;
+        font-size: 9px !important;
+        line-height: 1.25 !important;
+      }
+
+      #receiptModal #receiptQr {
+        min-height: 118px !important;
+      }
+
+      #receiptModal #receiptQr img,
+      #receiptModal #receiptQr canvas {
+        width: 118px !important;
+        height: 118px !important;
+        max-width: 118px !important;
+        max-height: 118px !important;
+      }
+
+      #receiptModal .receipt-url {
+        margin-top: 6px !important;
+        padding: 6px 7px !important;
+        font-size: 8px !important;
+        line-height: 1.15 !important;
+        max-height: 42px !important;
+        overflow: hidden !important;
+      }
+
+      #receiptModal .qr-panel > div:last-child {
+        margin-top: 8px !important;
+        gap: 6px !important;
+      }
+
+      #receiptModal .qr-panel .btn {
+        padding: 7px 9px !important;
+        font-size: 9px !important;
+      }
+
+      #receiptModal .modal-actions {
+        padding: 7px 10px 8px !important;
+      }
+
+      #receiptModal .modal-actions .btn {
+        padding: 7px 12px !important;
+        font-size: 9.5px !important;
+      }
+    }
+
+    /* Portrait iPad needs one-column layout, but still keep it compact. */
+    @media (min-width:700px) and (max-width:900px) and (pointer:coarse) and (orientation:portrait) {
+      #receiptModal .receipt-modal-body {
+        grid-template-columns: 1fr !important;
+        gap: 7px !important;
+      }
+
+      #receiptModal #receiptQr {
+        min-height: 105px !important;
+      }
+
+      #receiptModal #receiptQr img,
+      #receiptModal #receiptQr canvas {
+        width: 105px !important;
+        height: 105px !important;
+        max-width: 105px !important;
+        max-height: 105px !important;
+      }
+    }
+
   </style>
 </head>
 <body>
