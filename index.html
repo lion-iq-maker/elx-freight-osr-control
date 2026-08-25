@@ -1161,22 +1161,55 @@
     $("closeReceiptModal").onclick = $("doneReceiptBtn").onclick = function() { $("receiptModal").classList.remove("open"); setView("dashboard"); };
     $("clearReceiveBtn").onclick = clearReceive;
 
-    // ========== SAVE MOVE (legacy) ==========
-    $("saveMoveBtn").onclick = function() {
-      const r = state.records.find(x => x.id === selectedId);
-      if(!r) return;
-      const oldStatus = r.status;
-      const oldLocation = r.location;
-      const now = new Date().toISOString();
-      r.status = $("moveStatus").value;
-      r.location = $("moveLocation").value;
-      r.updated = now;
-      r.events = r.events || [];
-      r.events.push({ time: now, event: `${oldStatus} → ${r.status}`, user: $("moveUser").value, location: r.location, status: r.status, note: $("moveNote").value.trim() || `Location: ${oldLocation} → ${r.location}` });
-      saveState();
-      closeMove();
-      renderAll();
-      showToast("Freight updated — dashboard refreshed");
+    // ========== UPDATED: SAVE MOVE (calls transition API) ==========
+    $("saveMoveBtn").onclick = async function() {
+        if (!selectedId) {
+            showToast("No record selected");
+            return;
+        }
+
+        const targetStatus = document.getElementById('moveStatus').value;
+        const location = document.getElementById('moveLocation').value;
+        const receivedBy = document.getElementById('moveUser').value;
+        const note = document.getElementById('moveNote').value.trim();
+
+        const payload = {
+            targetStatus: targetStatus,
+            location: location || null,
+            receivedBy: receivedBy,
+            note: note || ''
+        };
+
+        const btn = this;
+        btn.disabled = true;
+        btn.textContent = "Saving...";
+
+        try {
+            const response = await fetch(`${API_BASE}/receipts/${selectedId}/transition`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to update');
+            }
+
+            showToast('Freight updated — dashboard refreshed');
+            closeMove();
+
+            // Refresh all views (including tracking)
+            renderAll();
+
+        } catch (error) {
+            console.error('Update error:', error);
+            showToast("Error: " + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Save Update";
+        }
     };
 
     // ========== ADMIN ==========
