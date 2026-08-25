@@ -365,6 +365,148 @@
       .split-grid { grid-template-columns:minmax(220px,.68fr) minmax(0,1.32fr) !important; }
     }
 
+  
+
+    /* ===== Audit Timeline fit-to-screen refinement ===== */
+    #view-timeline .tab-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(330px, 0.42fr);
+      gap: 10px;
+    }
+
+    #view-timeline .panel-head {
+      min-height: 50px;
+      padding: 9px 12px;
+    }
+
+    #view-timeline .panel-head h3 {
+      font-size: 14px;
+    }
+
+    #view-timeline .panel-head p {
+      margin-top: 2px;
+      font-size: 10px;
+    }
+
+    #view-timeline .scroll-area,
+    #view-timeline .timeline-scroll {
+      padding: 8px;
+      min-height: 0;
+    }
+
+    #view-timeline .card-list {
+      gap: 6px;
+    }
+
+    #view-timeline .mini-card {
+      padding: 9px 10px;
+      border-radius: 13px;
+    }
+
+    #view-timeline .mini-card strong {
+      font-size: 12px;
+    }
+
+    #view-timeline .mini-card p {
+      margin-top: 3px !important;
+      font-size: 10.5px !important;
+      line-height: 1.25;
+    }
+
+    #view-timeline .mini-card small {
+      font-size: 9px !important;
+    }
+
+    #view-timeline .detail-box-lite {
+      padding: 9px 10px;
+      border-radius: 13px;
+    }
+
+    #view-timeline .detail-box-lite strong {
+      font-size: 12px;
+    }
+
+    #view-timeline .detail-box-lite p {
+      margin-top: 3px !important;
+      font-size: 10px !important;
+      line-height: 1.25;
+    }
+
+    #view-timeline .timeline-list {
+      gap: 6px;
+    }
+
+    #view-timeline .time-event {
+      padding: 8px 9px;
+      gap: 8px;
+      border-radius: 12px;
+      align-items: flex-start;
+    }
+
+    #view-timeline .time-event > div:first-child {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    #view-timeline .time-event strong {
+      font-size: 11.5px;
+      line-height: 1.15;
+    }
+
+    #view-timeline .time-event small {
+      font-size: 9.5px !important;
+      line-height: 1.28;
+    }
+
+    #view-timeline .time-event .badge {
+      flex: 0 0 auto;
+      align-self: flex-start;
+      padding: 4px 7px;
+      font-size: 8.5px;
+      line-height: 1;
+      min-height: 0;
+      max-width: 105px;
+      white-space: normal;
+      text-align: center;
+      justify-content: center;
+    }
+
+    #view-timeline #itemTimeline {
+      margin-top: 6px !important;
+    }
+
+    /* Keep the timeline panel inside the viewport; only use internal scroll if
+       there are more audit events than can physically fit. */
+    #view-timeline .timeline-scroll {
+      overflow-y: scroll !important;
+      overflow-x: hidden !important;
+      height: 100% !important;
+      max-height: 100% !important;
+      min-height: 0 !important;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+    /* Make sure the Audit Timeline grid/panel gives the scroll area a real
+       bounded height. This affects only the Audit Timeline tab. */
+    #view-timeline .tab-grid {
+      height: 100% !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+    }
+
+    #view-timeline .panel.fill {
+      height: 100% !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+    }
+
+    #view-timeline #itemTimeline {
+      min-height: 0;
+      padding-bottom: 8px;
+    }
+
   </style>
 </head>
 <body>
