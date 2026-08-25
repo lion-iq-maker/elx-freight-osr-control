@@ -13,7 +13,10 @@ module.exports = async function (context, req) {
     try {
         const pool = await sql.connect(connectionString);
 
-        // 1. Get counts per status
+        const dateFilter = req.query.date || new Date().toISOString().slice(0, 10);
+        const startDate = dateFilter + 'T00:00:00Z';
+        const endDate = dateFilter + 'T23:59:59Z';
+
         const statuses = [
             'Goods Received',
             'Location Assigned',
@@ -24,11 +27,17 @@ module.exports = async function (context, req) {
             'Ready to Invoice'
         ];
 
-        // Build a dynamic query to get counts per status in one go
         const countPromises = statuses.map(status => {
             return pool.request()
                 .input('status', sql.NVarChar, status)
-                .query('SELECT COUNT(*) AS count FROM FreightReceipts WHERE current_status = @status');
+                .input('startDate', sql.DateTime2, startDate)
+                .input('endDate', sql.DateTime2, endDate)
+                .query(`
+                    SELECT COUNT(*) AS count
+                    FROM FreightReceipts
+                    WHERE current_status = @status
+                    AND received_at_utc BETWEEN @startDate AND @endDate
+                `);
         });
 
         const countResults = await Promise.all(countPromises);
@@ -37,15 +46,15 @@ module.exports = async function (context, req) {
             statusCounts[status] = countResults[i].recordset[0].count;
         });
 
-        // 2. Get the latest receipts for each status (up to 5 per status)
         const board = [];
 
         for (const status of statuses) {
             const result = await pool.request()
                 .input('status', sql.NVarChar, status)
-                .input('limit', sql.Int, 5)
+                .input('startDate', sql.DateTime2, startDate)
+                .input('endDate', sql.DateTime2, endDate)
                 .query(`
-                    SELECT TOP (@limit)
+                    SELECT
                         r.gr_number AS id,
                         r.supplier,
                         r.po_number AS po,
@@ -57,6 +66,7 @@ module.exports = async function (context, req) {
                     FROM FreightReceipts r
                     LEFT JOIN Locations l ON r.current_location_id = l.id
                     WHERE r.current_status = @status
+                    AND r.received_at_utc BETWEEN @startDate AND @endDate
                     ORDER BY r.updated_at_utc DESC
                 `);
 
@@ -71,7 +81,8 @@ module.exports = async function (context, req) {
             status: 200,
             body: JSON.stringify({
                 statusCounts: statusCounts,
-                board: board
+                board: board,
+                date: dateFilter
             })
         };
 
