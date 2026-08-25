@@ -106,16 +106,18 @@
     .upload-inline { height: 100%; min-height: 320px; border: 2px dashed #cbd5e1; border-radius: 20px; background: white; display: grid; place-items: center; text-align: center; padding: 18px; }
     .upload-inline h4 { margin: 0; font-size: 16px; } .upload-inline p { margin: 8px 0 13px; color: var(--muted); font-size: 12px; line-height: 1.45; }
     .camera-icon { width: 70px; height: 70px; border-radius: 22px; background: var(--soft); display: grid; place-items: center; margin: 0 auto 12px; font-size: 30px; box-shadow: 0 18px 38px rgba(15,23,42,0.08); }
-    .table-wrap { height: 100%; overflow: hidden; }
-    table { width: 100%; border-collapse: collapse; }
+    .table-wrap { height: 100%; overflow-y: auto !important; overflow-x: auto !important; min-height: 0; }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; }
     th, td { padding: 11px 13px; text-align: left; border-bottom: 1px solid var(--line); font-size: 12px; }
-    th { color: var(--muted); background: var(--soft); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+    th { color: var(--muted); background: var(--soft); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; position: sticky; top: 0; z-index: 1; }
     tr:hover td { background: #fff7f7; }
     .map-large { height: 100%; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 10px; background: var(--soft); }
     .bay { border: 1px solid var(--line); background: white; border-radius: 18px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 0; }
     .bay h4 { margin: 0; font-size: 15px; } .bay .big { font-size: 38px; font-weight: 950; letter-spacing: -0.05em; } .bay small { color: var(--muted); }
-    .search-row { display: flex; gap: 9px; padding: 10px; border-bottom: 1px solid var(--line); }
-    .search-row input { flex: 1; border: 1px solid var(--line); border-radius: 14px; padding: 11px 13px; outline: none; }
+    .search-row { display: flex; gap: 9px; padding: 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; align-items: center; }
+    .search-row input, .search-row select { border: 1px solid var(--line); border-radius: 14px; padding: 11px 13px; outline: none; font-size: 12px; }
+    .search-row input { flex: 1; min-width: 120px; }
+    .status-select { min-width: 160px; }
     .detail-box { background: var(--soft); border: 1px solid var(--line); border-radius: 18px; padding: 13px; min-height: 0; }
     .timeline-list { display: grid; gap: 8px; }
     .time-event { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 10px; display: flex; justify-content: space-between; gap: 12px; }
@@ -366,7 +368,7 @@
   </style>
 </head>
 <body>
-  <!-- ========== HTML STRUCTURE (unchanged) ========== -->
+  <!-- ========== HTML STRUCTURE ========== -->
   <div class="app">
     <aside class="sidebar">
       <div class="brand"><div class="brand-mark">ELX</div><div><h1>Freight Control</h1><p>Energy LogistiX · BHP Freight</p></div></div>
@@ -390,7 +392,15 @@
         <!-- Dashboard -->
         <div class="view active" id="view-dashboard">
           <div class="panel fill">
-            <div class="panel-head"><div><h3>Freight Lifecycle Board</h3><p>Goods Received → Location Assigned → SAP Validated → Ready for Dispatch → Dispatched.</p></div><span class="small-pill">Largs North Depot</span></div>
+            <div class="panel-head">
+              <div><h3>Freight Lifecycle Board</h3><p>Goods Received → Location Assigned → SAP Validated → Ready for Dispatch → Dispatched.</p></div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <label style="font-size:11px;font-weight:850;color:var(--muted);">Date:</label>
+                <input type="date" id="dashboardDate" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;">
+                <button class="btn btn-light" id="dashboardDateBtn" style="padding:6px 12px;font-size:10px;">Apply</button>
+                <button class="btn btn-ghost" id="dashboardDateReset" style="padding:6px 12px;font-size:10px;">Today</button>
+              </div>
+            </div>
             <div class="board" id="workloadBoard"></div>
           </div>
         </div>
@@ -440,7 +450,15 @@
           <div class="panel fill">
             <div class="panel-head"><div><h3>Freight Tracking</h3><p>Search any ELX GR and move freight through the operational lifecycle.</p></div></div>
             <div style="display:grid;grid-template-rows:auto 1fr;min-height:0;">
-              <div class="search-row"><input id="searchInput" placeholder="Search ELX GR, PO, supplier, connote, reference or site"><select id="statusFilter" class="status-select"></select><span class="small-pill" id="locationFilterPill" style="display:none;"></span><button class="btn btn-light" id="clearLocationFilterBtn" style="display:none;">Clear Cage Filter</button></div>
+              <div class="search-row">
+                <input id="searchInput" placeholder="Search ELX GR, PO, supplier, connote, reference or site">
+                <select id="statusFilter" class="status-select"></select>
+                <input type="date" id="trackingDate" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;">
+                <button class="btn btn-light" id="trackingDateBtn" style="padding:6px 12px;font-size:10px;">Apply</button>
+                <button class="btn btn-ghost" id="trackingDateReset" style="padding:6px 12px;font-size:10px;">Today</button>
+                <span class="small-pill" id="locationFilterPill" style="display:none;"></span>
+                <button class="btn btn-light" id="clearLocationFilterBtn" style="display:none;">Clear Cage Filter</button>
+              </div>
               <div class="table-wrap">
                 <table>
                   <thead>
@@ -633,26 +651,23 @@
     // ========== DASHBOARD API FUNCTIONS ==========
 
     function loadDashboard() {
-        fetch(`${API_BASE}/dashboard`)
+        const date = document.getElementById('dashboardDate').value || new Date().toISOString().slice(0, 10);
+        fetch(`${API_BASE}/dashboard?date=${date}`)
             .then(res => {
                 if (!res.ok) throw new Error('Failed to load dashboard');
                 return res.json();
             })
             .then(data => {
-                // Update KPI cards
                 renderKpis(data.statusCounts);
-                // Update lifecycle board
                 renderBoard(data.board);
             })
             .catch(err => {
                 console.error('Dashboard error:', err);
-                // If API fails, fallback to localStorage data (temporarily)
                 renderKpis();
                 renderBoard();
             });
     }
 
-    // Modified: accepts optional counts
     function renderKpis(counts) {
         if (!counts) {
             const fallbackCounts = {};
@@ -672,7 +687,6 @@
         $("kpiSection").innerHTML = cards.map(c => `<div class="kpi ${c[3]}"><div class="label">${c[0]}</div><div class="value">${c[1]}</div><div class="hint">${c[2]}</div></div>`).join("");
     }
 
-    // Helper: card HTML from API
     function boardCardHtmlFromApi(r) {
         return `<div class="item-card" data-id="${esc(r.id)}">
             <div class="item-top">
@@ -687,10 +701,8 @@
         </div>`;
     }
 
-    // Modified: accepts optional boardData
     function renderBoard(boardData) {
         if (!boardData) {
-            // Fallback to localStorage
             const lanes = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
             $("workloadBoard").innerHTML = lanes.map(s => {
                 const rows = state.records.filter(r => r.status === s);
@@ -700,7 +712,6 @@
             return;
         }
 
-        // Use API data
         const lanes = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
         $("workloadBoard").innerHTML = lanes.map(status => {
             const lane = boardData.find(b => b.status === status);
@@ -712,7 +723,6 @@
         document.querySelectorAll("#workloadBoard .item-card").forEach(c => c.onclick = () => openMove(c.dataset.id));
     }
 
-    // Original boardCardHtml (used for fallback)
     function boardCardHtml(r) {
         return `<div class="item-card" data-id="${esc(r.id)}">
             <div class="item-top">
@@ -727,56 +737,58 @@
         </div>`;
     }
 
-    // ========== RENDER TRACKING (API-based) ==========
+    // ========== RENDER TRACKING (API-based with date) ==========
     function renderTracking() {
-      const search = document.getElementById('searchInput').value.trim();
-      const statusFilter = document.getElementById('statusFilter').value;
-      const location = activeLocationFilter;
+        const search = document.getElementById('searchInput').value.trim();
+        const statusFilter = document.getElementById('statusFilter').value;
+        const location = activeLocationFilter;
+        const date = document.getElementById('trackingDate').value || new Date().toISOString().slice(0, 10);
 
-      let url = `${API_BASE}/receipts?`;
-      if (search) url += `search=${encodeURIComponent(search)}&`;
-      if (statusFilter) url += `status=${encodeURIComponent(statusFilter)}&`;
-      if (location) url += `locationId=${encodeURIComponent(location)}&`;
-      url += 'page=1&pageSize=100';
+        let url = `${API_BASE}/receipts?`;
+        if (search) url += `search=${encodeURIComponent(search)}&`;
+        if (statusFilter) url += `status=${encodeURIComponent(statusFilter)}&`;
+        if (location) url += `locationId=${encodeURIComponent(location)}&`;
+        if (date) url += `date=${encodeURIComponent(date)}&`;
+        url += 'page=1&pageSize=100';
 
-      document.getElementById('trackingBody').innerHTML = '<tr><td colspan="11">Loading...</td></tr>';
+        document.getElementById('trackingBody').innerHTML = '<tr><td colspan="11">Loading...</td></tr>';
 
-      fetch(url)
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch tracking data');
-          return res.json();
-        })
-        .then(data => {
-          const records = data.records || [];
-          let html = '';
-          records.forEach(r => {
-            const itemsSummary = r.itemsSummary || '';
-            const totalQty = r.totalQty || 0;
-            const totalWeight = r.totalWeight || 0;
-            html += `
-              <tr>
-                <td><strong>${esc(r.grNumber)}</strong></td>
-                <td>${esc(r.supplier)}</td>
-                <td>${esc(r.po || '-')}</td>
-                <td>${esc(r.site)}</td>
-                <td>${esc(itemsSummary)}</td>
-                <td>${totalQty}</td>
-                <td>${totalWeight} kg</td>
-                <td>${esc(r.location || '-')}</td>
-                <td><span class="badge ${tone(r.status)}">${esc(r.status)}</span></td>
-                <td>${fmt(r.updatedAt)}</td>
-                <td><button class="btn btn-light updateBtn" data-id="${esc(r.grNumber)}">Update</button></td>
-              </tr>
-            `;
-          });
-          document.getElementById('trackingBody').innerHTML = html || '<tr><td colspan="11">No records found.</td></tr>';
+        fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error('Failed to fetch tracking data');
+                return res.json();
+            })
+            .then(data => {
+                const records = data.records || [];
+                let html = '';
+                records.forEach(r => {
+                    const itemsSummary = r.itemsSummary || '';
+                    const totalQty = r.totalQty || 0;
+                    const totalWeight = r.totalWeight || 0;
+                    html += `
+                        <tr>
+                            <td><strong>${esc(r.grNumber)}</strong></td>
+                            <td>${esc(r.supplier)}</td>
+                            <td>${esc(r.po || '-')}</td>
+                            <td>${esc(r.site)}</td>
+                            <td>${esc(itemsSummary)}</td>
+                            <td>${totalQty}</td>
+                            <td>${totalWeight} kg</td>
+                            <td>${esc(r.location || '-')}</td>
+                            <td><span class="badge ${tone(r.status)}">${esc(r.status)}</span></td>
+                            <td>${fmt(r.updatedAt)}</td>
+                            <td><button class="btn btn-light updateBtn" data-id="${esc(r.grNumber)}">Update</button></td>
+                        </tr>
+                    `;
+                });
+                document.getElementById('trackingBody').innerHTML = html || '<tr><td colspan="11">No records found.</td></tr>';
 
-          document.querySelectorAll('.updateBtn').forEach(b => b.onclick = () => openMove(b.dataset.id));
-        })
-        .catch(err => {
-          console.error('Tracking error:', err);
-          document.getElementById('trackingBody').innerHTML = '<tr><td colspan="11">Error loading data. Please try again.</td></tr>';
-        });
+                document.querySelectorAll('.updateBtn').forEach(b => b.onclick = () => openMove(b.dataset.id));
+            })
+            .catch(err => {
+                console.error('Tracking error:', err);
+                document.getElementById('trackingBody').innerHTML = '<tr><td colspan="11">Error loading data. Please try again.</td></tr>';
+            });
     }
 
     // ========== OTHER FUNCTIONS (unchanged) ==========
@@ -818,10 +830,7 @@
 
     // ========== UPDATED RENDER ALL ==========
     function renderAll() {
-      // Dashboard (KPI and Board) now comes from API
       loadDashboard();
-
-      // Other components still use localStorage (will be updated later)
       renderLocations();
       renderTracking();
       renderTimeline();
@@ -1161,7 +1170,7 @@
     function closeOcr() { $("receiveModal").classList.remove("open"); }
     function closeMove() { $("moveModal").classList.remove("open"); }
 
-    // ========== OPEN MOVE (populates dropdowns) ==========
+    // ========== OPEN MOVE ==========
     function openMove(id) {
         let r = state.records.find(x => x.id === id);
 
@@ -1192,7 +1201,6 @@
         selectedId = id;
         $("moveTitle").textContent = `${r.id} · ${r.supplier} · ${r.site}`;
 
-        // Populate Status dropdown
         const statusSelect = document.getElementById('moveStatus');
         if (statusSelect) {
             statusSelect.innerHTML = '';
@@ -1205,7 +1213,6 @@
             statusSelect.value = r.status || 'Goods Received';
         }
 
-        // Populate Location dropdown
         const locationSelect = document.getElementById('moveLocation');
         if (locationSelect) {
             locationSelect.innerHTML = '';
@@ -1218,7 +1225,6 @@
             locationSelect.value = r.location || 'General Receiving Area';
         }
 
-        // Populate User dropdown
         const userSelect = document.getElementById('moveUser');
         if (userSelect) {
             userSelect.innerHTML = '';
@@ -1292,6 +1298,23 @@
     $("closeMoveModal").onclick = $("cancelMoveBtn").onclick = closeMove;
     $("closeReceiptModal").onclick = $("doneReceiptBtn").onclick = function() { $("receiptModal").classList.remove("open"); setView("dashboard"); };
     $("clearReceiveBtn").onclick = clearReceive;
+
+    // ========== DATE FILTER EVENTS ==========
+    document.getElementById('dashboardDateBtn').onclick = loadDashboard;
+    document.getElementById('dashboardDateReset').onclick = function() {
+        document.getElementById('dashboardDate').value = new Date().toISOString().slice(0, 10);
+        loadDashboard();
+    };
+
+    document.getElementById('trackingDateBtn').onclick = renderTracking;
+    document.getElementById('trackingDateReset').onclick = function() {
+        document.getElementById('trackingDate').value = new Date().toISOString().slice(0, 10);
+        renderTracking();
+    };
+
+    // Set default dates
+    document.getElementById('dashboardDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('trackingDate').value = new Date().toISOString().slice(0, 10);
 
     // ========== ADMIN ==========
     $("addStaffBtn").onclick = function() {
