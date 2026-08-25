@@ -16,7 +16,12 @@ module.exports = async function (context, req) {
         return handleGet(context, req, connectionString);
     }
 
-    // --- POST: create a new receipt ---
+    // --- POST: transition (update status/location) ---
+    if (req.method === 'POST' && req.params && req.params.grNumber) {
+        return handleTransition(context, req, connectionString);
+    }
+
+    // --- POST: create a new receipt (existing) ---
     if (req.method === 'POST') {
         return handlePost(context, req, connectionString);
     }
@@ -144,8 +149,151 @@ async function handleGet(context, req, connectionString) {
     }
 }
 
-// ========== HANDLE POST ==========
+// ========== HANDLE TRANSITION ==========
+async function handleTransition(context, req, connectionString) {
+    try {
+        const grNumber = req.params.grNumber;
+        const body = req.body || {};
+
+        // Required fields
+        if (!body.targetStatus) {
+            context.res = {
+                status: 400,
+                body: JSON.stringify({ error: 'Missing targetStatus' })
+            };
+            return;
+        }
+        if (!body.receivedBy) {
+            context.res = {
+                status: 400,
+                body: JSON.stringify({ error: 'Missing receivedBy (staff name)' })
+            };
+            return;
+        }
+
+        const pool = await sql.connect(connectionString);
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            // 1. Get the receipt
+            const receiptResult = await transaction.request()
+                .input('grNumber', sql.NVarChar, grNumber)
+                .query(`
+                    SELECT r.id, r.current_status, r.current_location_id, l.name AS locationName
+                    FROM FreightReceipts r
+                    LEFT JOIN Locations l ON r.current_location_id = l.id
+                    WHERE r.gr_number = @grNumber
+                `);
+
+            if (receiptResult.recordset.length === 0) {
+                throw new Error('Receipt not found');
+            }
+
+            const receipt = receiptResult.recordset[0];
+            const oldStatus = receipt.current_status;
+            const oldLocationId = receipt.current_location_id;
+            const oldLocationName = receipt.locationName || 'Unknown';
+
+            // 2. Look up location ID (if location provided, else keep current)
+            let newLocationId = null;
+            if (body.location) {
+                const locResult = await transaction.request()
+                    .input('locationName', sql.NVarChar, body.location)
+                    .query(`SELECT id FROM Locations WHERE name = @locationName`);
+                if (locResult.recordset.length === 0) {
+                    throw new Error(`Location "${body.location}" not found`);
+                }
+                newLocationId = locResult.recordset[0].id;
+            } else {
+                newLocationId = oldLocationId;
+            }
+
+            // 3. Look up staff user ID
+            const staffResult = await transaction.request()
+                .input('displayName', sql.NVarChar, body.receivedBy)
+                .query(`SELECT id FROM Staff WHERE display_name = @displayName`);
+            if (staffResult.recordset.length === 0) {
+                throw new Error(`Staff member "${body.receivedBy}" not found`);
+            }
+            const userId = staffResult.recordset[0].id;
+
+            // 4. Update the receipt
+            const now = new Date().toISOString();
+            await transaction.request()
+                .input('grNumber', sql.NVarChar, grNumber)
+                .input('newStatus', sql.NVarChar, body.targetStatus)
+                .input('newLocationId', sql.Int, newLocationId)
+                .input('updatedAt', sql.DateTime2, now)
+                .query(`
+                    UPDATE FreightReceipts
+                    SET current_status = @newStatus,
+                        current_location_id = @newLocationId,
+                        updated_at_utc = @updatedAt
+                    WHERE gr_number = @grNumber
+                `);
+
+            // 5. Insert lifecycle event
+            const eventNote = body.note || `Status: ${oldStatus} → ${body.targetStatus} | Location: ${oldLocationName} → ${body.location || oldLocationName}`;
+            await transaction.request()
+                .input('receiptId', sql.BigInt, receipt.id)
+                .input('eventType', sql.NVarChar, 'STATUS_CHANGE')
+                .input('oldStatus', sql.NVarChar, oldStatus)
+                .input('newStatus', sql.NVarChar, body.targetStatus)
+                .input('oldLocationId', sql.Int, oldLocationId)
+                .input('newLocationId', sql.Int, newLocationId)
+                .input('userId', sql.Int, userId)
+                .input('displayName', sql.NVarChar, body.receivedBy)
+                .input('performedAt', sql.DateTime2, now)
+                .input('note', sql.NVarChar, eventNote)
+                .query(`
+                    INSERT INTO LifecycleEvents (
+                        receipt_id, event_type,
+                        previous_status, new_status,
+                        previous_location_id, new_location_id,
+                        performed_by_user_id, performed_by_display_name,
+                        performed_at_utc, note
+                    )
+                    VALUES (
+                        @receiptId, @eventType,
+                        @oldStatus, @newStatus,
+                        @oldLocationId, @newLocationId,
+                        @userId, @displayName,
+                        @performedAt, @note
+                    )
+                `);
+
+            await transaction.commit();
+
+            context.res = {
+                status: 200,
+                body: JSON.stringify({
+                    success: true,
+                    grNumber: grNumber,
+                    newStatus: body.targetStatus,
+                    newLocation: body.location || oldLocationName,
+                    updatedAt: now
+                })
+            };
+
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
+
+    } catch (error) {
+        context.log.error('Transition error:', error);
+        context.res = {
+            status: 500,
+            body: JSON.stringify({ error: error.message })
+        };
+    }
+}
+
+// ========== HANDLE POST (Create Receipt) – YOUR EXISTING LOGIC (unchanged) ==========
 async function handlePost(context, req, connectionString) {
+    // Your existing POST logic – keep exactly as you had it.
+    // I'm copying it here for completeness, but it should be identical to your current version.
     const body = req.body || {};
     const required = ['supplier', 'site', 'receivedBy'];
     const missing = required.filter(f => !body[f]);
@@ -184,7 +332,7 @@ async function handlePost(context, req, connectionString) {
                     .input('locationName', sql.NVarChar, body.location)
                     .query(`SELECT id FROM Locations WHERE name = @locationName`);
                 if (locationResult.recordset.length === 0) {
-                    throw new Error(`Location "${body.location}" not found`);
+                    throw new Error(`Location "${body.location}" not found in database.`);
                 }
                 locationId = locationResult.recordset[0].id;
             }
