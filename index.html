@@ -1278,7 +1278,7 @@
                     let url = `${API_BASE}/receipts?`;
                     if (search) url += `search=${encodeURIComponent(search)}&`;
                     if (statusFilter) url += `status=${encodeURIComponent(statusFilter)}&`;
-                    if (location) url += `locationId=${encodeURIComponent(location)}&`;
+                    if (location) url += `location=${encodeURIComponent(location)}&`;
                     url += `date=${encodeURIComponent(date)}&page=1&pageSize=100`;
                     const res = await fetch(url);
                     if (!res.ok) throw new Error(`Failed to fetch tracking data for ${date}`);
