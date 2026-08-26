@@ -365,472 +365,6 @@
       .split-grid { grid-template-columns:minmax(220px,.68fr) minmax(0,1.32fr) !important; }
     }
 
-  
-
-    /* ===== Audit Timeline fit-to-screen refinement ===== */
-    #view-timeline .tab-grid {
-      grid-template-columns: minmax(0, 1fr) minmax(330px, 0.42fr);
-      gap: 10px;
-    }
-
-    #view-timeline .panel-head {
-      min-height: 50px;
-      padding: 9px 12px;
-    }
-
-    #view-timeline .panel-head h3 {
-      font-size: 14px;
-    }
-
-    #view-timeline .panel-head p {
-      margin-top: 2px;
-      font-size: 10px;
-    }
-
-    #view-timeline .scroll-area,
-    #view-timeline .timeline-scroll {
-      padding: 8px;
-      min-height: 0;
-    }
-
-    #view-timeline .card-list {
-      gap: 6px;
-    }
-
-    #view-timeline .mini-card {
-      padding: 9px 10px;
-      border-radius: 13px;
-    }
-
-    #view-timeline .mini-card strong {
-      font-size: 12px;
-    }
-
-    #view-timeline .mini-card p {
-      margin-top: 3px !important;
-      font-size: 12px !important;
-      line-height: 1.25;
-    }
-
-    #view-timeline .mini-card small {
-      font-size: 10.5px !important;
-    }
-
-    #view-timeline .detail-box-lite {
-      padding: 9px 10px;
-      border-radius: 13px;
-    }
-
-    #view-timeline .detail-box-lite strong {
-      font-size: 12px;
-    }
-
-    #view-timeline .detail-box-lite p {
-      margin-top: 3px !important;
-      font-size: 10px !important;
-      line-height: 1.25;
-    }
-
-    #view-timeline .timeline-list {
-      gap: 6px;
-    }
-
-    #view-timeline .time-event {
-      padding: 8px 9px;
-      gap: 8px;
-      border-radius: 12px;
-      align-items: flex-start;
-    }
-
-    #view-timeline .time-event > div:first-child {
-      min-width: 0;
-      flex: 1 1 auto;
-    }
-
-    #view-timeline .time-event strong {
-      font-size: 11.5px;
-      line-height: 1.15;
-    }
-
-    #view-timeline .time-event small {
-      font-size: 11px !important;
-      line-height: 1.28;
-    }
-
-    #view-timeline .time-event .badge {
-      flex: 0 0 auto;
-      align-self: flex-start;
-      padding: 4px 7px;
-      font-size: 8.5px;
-      line-height: 1;
-      min-height: 0;
-      max-width: 105px;
-      white-space: normal;
-      text-align: center;
-      justify-content: center;
-    }
-
-    #view-timeline #itemTimeline {
-      margin-top: 6px !important;
-    }
-
-    /* Keep the timeline panel inside the viewport; only use internal scroll if
-       there are more audit events than can physically fit. */
-    #view-timeline .timeline-scroll {
-      overflow-y: scroll !important;
-      overflow-x: hidden !important;
-      height: 100% !important;
-      max-height: 100% !important;
-      min-height: 0 !important;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-      scrollbar-gutter: stable;
-    }
-
-    /* Make sure the Audit Timeline grid/panel gives the scroll area a real
-       bounded height. This affects only the Audit Timeline tab. */
-    #view-timeline .tab-grid {
-      height: 100% !important;
-      min-height: 0 !important;
-      overflow: hidden !important;
-    }
-
-    #view-timeline .panel.fill {
-      height: 100% !important;
-      min-height: 0 !important;
-      overflow: hidden !important;
-      grid-template-rows: auto minmax(0, 1fr) !important;
-    }
-
-    #view-timeline #itemTimeline {
-      min-height: 0;
-      padding-bottom: 8px;
-    }
-
-  
-    /* ===== Receipt popup: compact one-screen layout (PC + iPad) ===== */
-    /* Scoped ONLY to the Goods Received Receipt popup. Other tables/screens stay unchanged. */
-    #receiptModal {
-      position: fixed !important;
-      inset: 0 !important;
-      width: 100vw !important;
-      height: 100vh !important;
-      height: 100dvh !important;
-      padding: 8px !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: hidden !important;
-      overscroll-behavior: contain;
-    }
-
-    #receiptModal .modal {
-      width: min(900px, calc(100vw - 20px)) !important;
-      max-width: calc(100vw - 20px) !important;
-      height: auto !important;
-      max-height: calc(100vh - 16px) !important;
-      max-height: calc(100dvh - 16px) !important;
-      min-width: 0 !important;
-      overflow: hidden !important;
-      display: grid !important;
-      grid-template-rows: auto minmax(0, 1fr) auto !important;
-    }
-
-    #receiptModal .modal-head {
-      padding: 12px 16px !important;
-      min-height: 0 !important;
-    }
-
-    #receiptModal .modal-head h3 {
-      font-size: 20px !important;
-    }
-
-    #receiptModal .modal-head p {
-      margin-top: 2px !important;
-      font-size: 12px !important;
-      line-height: 1.25 !important;
-    }
-
-    #receiptModal .close {
-      width: 32px !important;
-      height: 32px !important;
-      flex: 0 0 32px !important;
-    }
-
-    #receiptModal .receipt-modal-body {
-      display: block !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      min-width: 0 !important;
-      min-height: 0 !important;
-      padding: 10px 14px !important;
-      overflow-x: hidden !important;
-      overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-    }
-
-    #receiptModal .receipt-modal-body > div {
-      width: 100% !important;
-      max-width: 100% !important;
-      min-width: 0 !important;
-    }
-
-    #receiptModal .receipt-success {
-      width: 100% !important;
-      margin: 0 !important;
-      padding: 11px 13px !important;
-      border-radius: 13px !important;
-    }
-
-    #receiptModal .receipt-success h4 {
-      margin: 0 0 2px !important;
-      font-size: 19px !important;
-    }
-
-    #receiptModal .receipt-success p {
-      font-size: 11px !important;
-      line-height: 1.35 !important;
-    }
-
-    #receiptModal .receipt-ref {
-      width: 100% !important;
-      margin-top: 7px !important;
-      padding: 10px 12px !important;
-      border-radius: 12px !important;
-    }
-
-    #receiptModal .receipt-ref small {
-      font-size: 10.5px !important;
-    }
-
-    #receiptModal .receipt-ref strong {
-      margin-top: 2px !important;
-      font-size: 19px !important;
-    }
-
-    #receiptModal .detail-box {
-      width: 100% !important;
-      max-width: 100% !important;
-      min-width: 0 !important;
-      margin-top: 7px !important;
-      padding: 10px 12px !important;
-      border-radius: 13px !important;
-    }
-
-    #receiptModal .field-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-      gap: 8px !important;
-      width: 100% !important;
-      min-width: 0 !important;
-    }
-
-    #receiptModal .field,
-    #receiptModal .field input {
-      min-width: 0 !important;
-      max-width: 100% !important;
-    }
-
-    #receiptModal .field label {
-      margin-bottom: 2px !important;
-      font-size: 10px !important;
-    }
-
-    #receiptModal .field input {
-      min-height: 34px !important;
-      padding: 9px 11px !important;
-      border-radius: 9px !important;
-      font-size: 11px !important;
-    }
-
-    #receiptModal .receipt-table {
-      width: 100% !important;
-      min-width: 0 !important;
-      max-width: 100% !important;
-      margin-top: 7px !important;
-      table-layout: fixed !important;
-    }
-
-    #receiptModal .receipt-table th,
-    #receiptModal .receipt-table td {
-      padding: 6px 8px !important;
-      font-size: 10.5px !important;
-      white-space: normal !important;
-      overflow-wrap: anywhere !important;
-      word-break: break-word !important;
-    }
-
-    #receiptModal .receipt-table th {
-      font-size: 9.5px !important;
-    }
-
-    /* QR remains below the receipt details, but is compact so normal receipts fit in one popup. */
-    #receiptModal .qr-panel {
-      width: 100% !important;
-      max-width: 100% !important;
-      min-width: 0 !important;
-      margin-top: 7px !important;
-      padding: 10px 12px !important;
-      border-radius: 13px !important;
-      overflow: hidden !important;
-      display: grid !important;
-      grid-template-columns: 108px minmax(0, 1fr) !important;
-      grid-template-rows: auto auto auto !important;
-      column-gap: 12px !important;
-      row-gap: 4px !important;
-      text-align: left !important;
-      align-items: center !important;
-    }
-
-    #receiptModal .qr-panel > div:first-child {
-      grid-column: 2 !important;
-      grid-row: 1 !important;
-      font-size: 14px !important;
-      text-align: left !important;
-    }
-
-    #receiptModal .qr-panel > p {
-      grid-column: 2 !important;
-      grid-row: 2 !important;
-      margin: 0 !important;
-      font-size: 10.5px !important;
-      line-height: 1.25 !important;
-      text-align: left !important;
-    }
-
-    #receiptModal #receiptQr {
-      grid-column: 1 !important;
-      grid-row: 1 / span 3 !important;
-      min-height: 0 !important;
-      width: 108px !important;
-      height: 108px !important;
-      padding: 0 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-    }
-
-    #receiptModal #receiptQr img,
-    #receiptModal #receiptQr canvas {
-      width: 108px !important;
-      height: 108px !important;
-      max-width: 108px !important;
-      max-height: 108px !important;
-    }
-
-    #receiptModal .receipt-url {
-      grid-column: 2 !important;
-      grid-row: 3 !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      margin: 0 !important;
-      padding: 6px 8px !important;
-      font-size: 9.5px !important;
-      line-height: 1.15 !important;
-      max-height: 34px !important;
-      overflow: hidden !important;
-      overflow-wrap: anywhere !important;
-      word-break: break-all !important;
-      white-space: normal !important;
-    }
-
-    #receiptModal .qr-panel > div:last-child {
-      grid-column: 1 / -1 !important;
-      grid-row: 4 !important;
-      margin-top: 3px !important;
-      display: flex !important;
-      justify-content: flex-end !important;
-      gap: 8px !important;
-      flex-wrap: nowrap !important;
-    }
-
-    #receiptModal .qr-panel .btn {
-      padding: 7px 11px !important;
-      font-size: 10.5px !important;
-      min-height: 34px !important;
-    }
-
-    #receiptModal .modal-actions {
-      width: 100% !important;
-      padding: 8px 14px 10px !important;
-      overflow: hidden !important;
-    }
-
-    #receiptModal .modal-actions .btn {
-      padding: 8px 14px !important;
-      font-size: 11.5px !important;
-      min-height: 34px !important;
-    }
-
-    /* iPad / touch landscape: lock the popup to the visible viewport so it opens once at full size. */
-    @media (min-width: 700px) and (max-width: 1366px) and (pointer: coarse) {
-      #receiptModal {
-        height: 100dvh !important;
-        min-height: 100dvh !important;
-        max-height: 100dvh !important;
-        padding: 6px !important;
-      }
-
-      #receiptModal .modal {
-        width: min(900px, calc(100vw - 16px)) !important;
-        max-width: calc(100vw - 16px) !important;
-        max-height: calc(100dvh - 12px) !important;
-        margin: 0 !important;
-      }
-
-      #receiptModal .receipt-modal-body {
-        padding: 9px 11px !important;
-      }
-
-      #receiptModal .modal-head {
-        padding: 10px 13px !important;
-      }
-
-      #receiptModal .receipt-success,
-      #receiptModal .receipt-ref,
-      #receiptModal .detail-box,
-      #receiptModal .qr-panel {
-        margin-top: 5px !important;
-      }
-
-      #receiptModal .receipt-success {
-        margin-top: 0 !important;
-      }
-    }
-
-    /* Portrait/smaller screens: still never scroll sideways; only vertical overflow is allowed. */
-    @media (max-width: 760px), (orientation: portrait) and (max-width: 900px) {
-      #receiptModal .field-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      }
-
-      #receiptModal .qr-panel {
-        grid-template-columns: 94px minmax(0, 1fr) !important;
-      }
-
-      #receiptModal #receiptQr,
-      #receiptModal #receiptQr img,
-      #receiptModal #receiptQr canvas {
-        width: 94px !important;
-        height: 94px !important;
-        max-width: 94px !important;
-        max-height: 94px !important;
-      }
-    }
-
-  
-    /* Receipt popup readability polish: larger, clearer text without adding horizontal overflow. */
-    #receiptModal .receipt-success,
-    #receiptModal .receipt-ref,
-    #receiptModal .detail-box,
-    #receiptModal .qr-panel {
-      box-shadow: 0 4px 14px rgba(15,23,42,0.045);
-    }
-    #receiptModal .field label { color: #475569 !important; font-weight: 900 !important; }
-    #receiptModal .field input { color: #0f172a !important; font-weight: 650 !important; }
-    #receiptModal .receipt-table td { color: #0f172a !important; font-weight: 650 !important; }
-    #receiptModal .receipt-table th { color: #475569 !important; font-weight: 900 !important; }
-    #receiptModal .receipt-url { color: #475569 !important; }
-
   </style>
 </head>
 <body>
@@ -963,15 +497,31 @@
         <!-- Timeline -->
         <div class="view" id="view-timeline">
           <div class="tab-grid">
-            <div class="panel fill"><div class="panel-head"><div><h3>Freight Records</h3><p>Select a GR to view the full audit trail.</p></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><label style="font-size:10px;font-weight:850;color:var(--muted);">From:</label><input type="date" id="timelineDateFrom" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:10px;"><label style="font-size:10px;font-weight:850;color:var(--muted);">To:</label><input type="date" id="timelineDateTo" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:10px;"><button class="btn btn-light" id="timelineDateBtn" style="padding:6px 10px;font-size:9px;">Apply</button><button class="btn btn-ghost" id="timelineDateReset" style="padding:6px 10px;font-size:9px;">Today</button></div></div><div class="scroll-area"><div class="card-list" id="timelineRecordList"></div></div></div>
+            <div class="panel fill"><div class="panel-head"><div><h3>Freight Records</h3><p>Select a GR to view the full audit trail.</p></div></div><div class="scroll-area"><div class="card-list" id="timelineRecordList"></div></div></div>
             <div class="panel fill"><div class="panel-head"><div><h3>Audit Timeline</h3><p>Every major action, user, timestamp, location and status.</p></div></div><div class="timeline-scroll"><div id="timelineSummary"></div><div class="timeline-list" id="itemTimeline" style="margin-top:10px;"></div></div></div>
           </div>
         </div>
         <!-- Reports -->
         <div class="view" id="view-reports">
           <div class="panel fill">
-            <div class="panel-head"><div><h3>Reports & Invoice Readiness</h3><p>Live operational summary from the freight lifecycle dataset.</p></div></div>
-            <div class="table-wrap"><table><thead><tr><th>Site</th><th>GR Records</th><th>Total Qty</th><th>Total Weight</th><th>Dispatched+</th><th>Ready to Invoice</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
+            <div class="panel-head">
+              <div><h3>Reports & Invoice Readiness</h3><p>Live operational summary from the freight lifecycle dataset.</p></div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <label style="font-size:11px;font-weight:850;color:var(--muted);">From:</label>
+                <input type="date" id="reportsDateFrom" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;">
+                <label style="font-size:11px;font-weight:850;color:var(--muted);">To:</label>
+                <input type="date" id="reportsDateTo" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;">
+                <button class="btn btn-light" id="reportsDateBtn" style="padding:6px 12px;font-size:10px;">Apply</button>
+                <button class="btn btn-ghost" id="reportsDateReset" style="padding:6px 12px;font-size:10px;">Today</button>
+                <button class="btn btn-blue" id="exportCsvBtn" style="padding:6px 12px;font-size:10px;">Export CSV</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Site</th><th>GR Records</th><th>Total Qty</th><th>Total Weight</th><th>Dispatched+</th><th>Ready to Invoice</th></tr></thead>
+                <tbody id="reportsBody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
         <!-- Settings -->
@@ -1337,84 +887,50 @@
       document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; if ($("locationFilter")) $("locationFilter").value = activeLocationFilter; setView("tracking"); renderTracking(); }; });
     }
 
-    // ========== UPDATED RENDER TIMELINE (Azure API + date range) ==========
+    // ========== UPDATED RENDER TIMELINE (Azure API) ==========
     async function renderTimeline() {
         const listContainer = document.getElementById('timelineRecordList');
-        const from = document.getElementById('timelineDateFrom')?.value || getLocalToday();
-        const to = document.getElementById('timelineDateTo')?.value || from;
-        const dates = getInclusiveDates(from, to);
-        if (!dates) return;
-
         listContainer.innerHTML = '<div style="padding:12px;color:#64748b;">Loading receipts...</div>';
-
         try {
-            const dailyResults = await Promise.all(
-                dates.map(async date => {
-                    const res = await fetch(`${API_BASE}/receipts?date=${encodeURIComponent(date)}&page=1&pageSize=200`);
-                    if (!res.ok) {
-                        const errorText = await res.text();
-                        throw new Error(`HTTP ${res.status}: ${errorText}`);
-                    }
-                    return res.json();
-                })
-            );
-
-            const recordMap = new Map();
-            dailyResults.forEach(data => {
-                (data.records || []).forEach(r => {
-                    const key = r.id || r.grNumber || JSON.stringify(r);
-                    recordMap.set(key, r);
-                });
-            });
-
-            const records = [...recordMap.values()].sort((a, b) => {
-                const aTime = new Date(a.updatedAt || a.receivedAt || 0).getTime();
-                const bTime = new Date(b.updatedAt || b.receivedAt || 0).getTime();
-                return bTime - aTime;
-            });
-
+            const res = await fetch(`${API_BASE}/receipts?page=1&pageSize=200`);
+            if (!res.ok) throw new Error('Failed to fetch timeline records');
+            const data = await res.json();
+            const records = data.records || [];
             if (records.length === 0) {
-                listContainer.innerHTML = '<div style="padding:12px;color:#64748b;">No receipts found for this date range.</div>';
-                document.getElementById('timelineSummary').innerHTML = '';
-                document.getElementById('itemTimeline').innerHTML = '';
-                selectedId = null;
+                listContainer.innerHTML = '<div style="padding:12px;color:#64748b;">No receipts found.</div>';
                 return;
             }
-
             let html = '';
             records.forEach(r => {
                 const totalQty = r.totalQty || 0;
-                const recordId = r.id || r.grNumber;
                 html += `
-                    <div class="mini-card timelineRecord" data-id="${esc(recordId)}">
-                        <strong>${esc(recordId)}</strong>
+                    <div class="mini-card timelineRecord" data-id="${esc(r.id)}">
+                        <strong>${esc(r.id)}</strong>
                         <p style="color:#64748b;font-size:12px;margin:5px 0 0;">
                             ${esc(r.supplier)} · ${esc(r.status)} · Qty: ${totalQty}
                         </p>
-                        <small style="color:#94a3b8;font-size:10px;">${fmt(r.updatedAt || r.receivedAt)}</small>
+                        <small style="color:#94a3b8;font-size:10px;">${fmt(r.updatedAt)}</small>
                     </div>
                 `;
             });
-
             listContainer.innerHTML = html;
             document.querySelectorAll('.timelineRecord').forEach(el => {
                 el.onclick = () => showTimeline(el.dataset.id);
             });
-
-            const selectedStillVisible = selectedId && records.some(r => (r.id || r.grNumber) === selectedId);
-            if (!selectedStillVisible) selectedId = records[0].id || records[0].grNumber;
-            if (selectedId) showTimeline(selectedId, false);
-
+            if (!selectedId && records.length > 0) {
+                selectedId = records[0].id;
+                showTimeline(selectedId, false);
+            } else if (selectedId) {
+                showTimeline(selectedId, false);
+            }
         } catch (err) {
             console.error('Timeline list error:', err);
-            listContainer.innerHTML = `<div style="padding:12px;color:#b91c1c;">Error loading records: ${esc(err.message)}</div>`;
-            // Preserve the existing fallback behaviour.
+            listContainer.innerHTML = '<div style="padding:12px;color:#b91c1c;">Error loading records.</div>';
             fallbackTimeline();
         }
     }
 
     function fallbackTimeline() {
-        // old localStorage-based implementation
         $("timelineRecordList").innerHTML=state.records.map(r=>`<div class="mini-card timelineRecord" data-id="${esc(r.id)}"><strong>${esc(r.id)}</strong><p style="color:#64748b;font-size:12px;margin:5px 0 0;">${esc(r.supplier)} · ${esc(r.status)}</p></div>`).join("");
         document.querySelectorAll(".timelineRecord").forEach(x=>x.onclick=()=>showTimeline(x.dataset.id));
         if(!selectedId && state.records[0]) selectedId=state.records[0].id;
@@ -1431,10 +947,7 @@
 
         try {
             const res = await fetch(`${API_BASE}/receipts/${id}`);
-            if (!res.ok) {
-                const errorText = await res.text();
-                throw new Error(`HTTP ${res.status}: ${errorText}`);
-            }
+            if (!res.ok) throw new Error('Failed to fetch timeline details');
             const receipt = await res.json();
 
             summaryDiv.innerHTML = `
@@ -1457,7 +970,6 @@
             }
 
             let html = '';
-            // Show newest first
             events.slice().reverse().forEach(e => {
                 const statusBadge = e.status ? `<span class="badge ${tone(e.status)}">${esc(e.status)}</span>` : '';
                 html += `
@@ -1478,9 +990,8 @@
 
         } catch (err) {
             console.error('Timeline detail error:', err);
-            summaryDiv.innerHTML = `<div style="padding:12px;color:#b91c1c;">Error: ${esc(err.message)}</div>`;
+            summaryDiv.innerHTML = '<div style="padding:12px;color:#b91c1c;">Error loading timeline.</div>';
             eventsDiv.innerHTML = '';
-            // Preserve the existing fallback behaviour.
             fallbackShowTimeline(id, setSelected);
         }
     }
@@ -1493,29 +1004,102 @@
         $("itemTimeline").innerHTML=(r.events||[]).slice().reverse().map(e=>`<div class="time-event"><div><strong>${esc(e.event)}</strong><br><small style="color:#64748b;">${fmt(e.time)} · ${esc(e.user||"System")} · ${esc(e.location||"-")}</small><br><small style="color:#64748b;">${esc(e.note||"")}</small></div><span class="badge ${tone(e.status)}">${esc(e.status)}</span></div>`).join("");
     }
 
-    // ========== REPORTS (unchanged) ==========
-    function renderReports() {
-      const sites=["BHP Olympic Dam","BHP Carrapateena","BHP Prominent Hill","Other / Unknown"];
-      $("reportsBody").innerHTML=sites.map(site=>{ const rs=state.records.filter(r=>r.site===site); return `<tr><td><strong>${site}</strong></td><td>${rs.length}</td><td>${rs.reduce((a,r)=>a+totalQty(r),0)}</td><td>${Math.round(rs.reduce((a,r)=>a+totalWeight(r),0))} kg</td><td>${rs.filter(r=>STATUS.indexOf(r.status)>=4).length}</td><td>${rs.filter(r=>r.status==="Ready to Invoice").length}</td></tr>`; }).join("");
+    // ========== REPORTS ==========
+    async function renderReports() {
+        const from = document.getElementById('reportsDateFrom').value || getLocalToday();
+        const to = document.getElementById('reportsDateTo').value || from;
+        const dates = getInclusiveDates(from, to);
+        if (!dates) return;
+
+        document.getElementById('reportsBody').innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+
+        try {
+            const url = `${API_BASE}/reports?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Failed to fetch reports');
+            const data = await res.json();
+
+            const sites = data.sites || [];
+            const overall = data.overall || {};
+
+            let html = '';
+            sites.forEach(s => {
+                html += `
+                    <tr>
+                        <td><strong>${esc(s.site)}</strong></td>
+                        <td>${s.totalRecords}</td>
+                        <td>${s.totalQty}</td>
+                        <td>${s.totalWeight} kg</td>
+                        <td>${s.dispatchedPlus}</td>
+                        <td>${s.readyToInvoice}</td>
+                    </tr>
+                `;
+            });
+
+            // Overall row
+            html += `
+                <tr style="font-weight:bold;background:var(--soft);">
+                    <td>TOTAL</td>
+                    <td>${overall.totalRecords || 0}</td>
+                    <td>${overall.totalQty || 0}</td>
+                    <td>${overall.totalWeight || 0} kg</td>
+                    <td>${overall.dispatchedPlus || 0}</td>
+                    <td>${overall.readyToInvoice || 0}</td>
+                </tr>
+            `;
+            document.getElementById('reportsBody').innerHTML = html;
+
+            // Store data for CSV export
+            window._reportData = { sites, overall };
+
+        } catch (err) {
+            console.error('Reports error:', err);
+            document.getElementById('reportsBody').innerHTML = '<tr><td colspan="6">Error loading reports.</td></tr>';
+            fallbackReports();
+        }
     }
 
-    function syncMasterData() {
-      function options(arr,placeholder) { return `<option value="">${placeholder}</option>` + arr.map(x=>`<option>${esc(x)}</option>`).join(""); }
-      const rv=$("receivedBy").value;
-      $("receivedBy").innerHTML=options(state.staff,"Select ELX staff member");
-      if(state.staff.includes(rv)) $("receivedBy").value=rv;
-      $("staffList").innerHTML=state.staff.map((s,i)=>`<div class="staff-line"><span>${esc(s)}</span><button class="btn btn-light removeStaff" data-i="${i}">Remove</button></div>`).join("");
-      $("locationList").innerHTML=state.locations.map((s,i)=>`<div class="staff-line"><span>${esc(s)}</span><button class="btn btn-light removeLocation" data-i="${i}">Remove</button></div>`).join("");
-      document.querySelectorAll(".removeStaff").forEach(b=>b.onclick=()=>{ if(state.staff.length>1){ state.staff.splice(+b.dataset.i,1); saveState(); renderAll(); } });
-      document.querySelectorAll(".removeLocation").forEach(b=>b.onclick=()=>{ if(state.locations.length>1){ state.locations.splice(+b.dataset.i,1); saveState(); renderAll(); } });
+    // Fallback for Reports (old localStorage)
+    function fallbackReports() {
+        const sites = ["BHP Olympic Dam","BHP Carrapateena","BHP Prominent Hill","Other / Unknown"];
+        $("reportsBody").innerHTML = sites.map(site => {
+            const rs = state.records.filter(r => r.site === site);
+            return `<tr><td><strong>${site}</strong></td><td>${rs.length}</td><td>${rs.reduce((a,r)=>a+totalQty(r),0)}</td><td>${Math.round(rs.reduce((a,r)=>a+totalWeight(r),0))} kg</td><td>${rs.filter(r=>STATUS.indexOf(r.status)>=4).length}</td><td>${rs.filter(r=>r.status==="Ready to Invoice").length}</td></tr>`;
+        }).join("");
     }
 
-    // ========== UPDATED RENDER ALL ==========
+    // ========== CSV EXPORT ==========
+    function exportCsv() {
+        const data = window._reportData;
+        if (!data || !data.sites || data.sites.length === 0) {
+            showToast('No data to export');
+            return;
+        }
+
+        let csv = 'Site,Total Records,Total Qty,Total Weight (kg),Dispatched+,Ready to Invoice\n';
+        data.sites.forEach(s => {
+            csv += `${s.site},${s.totalRecords},${s.totalQty},${s.totalWeight},${s.dispatchedPlus},${s.readyToInvoice}\n`;
+        });
+        const o = data.overall || {};
+        csv += `TOTAL,${o.totalRecords || 0},${o.totalQty || 0},${o.totalWeight || 0},${o.dispatchedPlus || 0},${o.readyToInvoice || 0}\n`;
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ELX_Report_${getLocalToday()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // ========== RENDER ALL ==========
     function renderAll() {
       loadDashboard();
       renderLocations();
       renderTracking();
-      renderTimeline();   // now uses API
+      renderTimeline();
       renderReports();
       syncMasterData();
       updateItemSummary();
@@ -1998,14 +1582,14 @@
         renderTracking();
     };
 
-    document.getElementById('timelineDateBtn').onclick = renderTimeline;
-    document.getElementById('timelineDateReset').onclick = function() {
+    document.getElementById('reportsDateBtn').onclick = renderReports;
+    document.getElementById('reportsDateReset').onclick = function() {
         const today = getLocalToday();
-        document.getElementById('timelineDateFrom').value = today;
-        document.getElementById('timelineDateTo').value = today;
-        selectedId = null;
-        renderTimeline();
+        document.getElementById('reportsDateFrom').value = today;
+        document.getElementById('reportsDateTo').value = today;
+        renderReports();
     };
+    document.getElementById('exportCsvBtn').onclick = exportCsv;
 
     // Default range = today only
     const defaultToday = getLocalToday();
@@ -2013,8 +1597,8 @@
     document.getElementById('dashboardDateTo').value = defaultToday;
     document.getElementById('trackingDateFrom').value = defaultToday;
     document.getElementById('trackingDateTo').value = defaultToday;
-    document.getElementById('timelineDateFrom').value = defaultToday;
-    document.getElementById('timelineDateTo').value = defaultToday;
+    document.getElementById('reportsDateFrom').value = defaultToday;
+    document.getElementById('reportsDateTo').value = defaultToday;
 
     // Populate location filter
     $("locationFilter").innerHTML = '<option value="">All Locations</option>' + state.locations.map(loc => `<option value="${esc(loc)}">${esc(loc)}</option>`).join("");
