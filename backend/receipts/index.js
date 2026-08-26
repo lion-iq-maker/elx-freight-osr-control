@@ -115,7 +115,7 @@ async function handleGet(context, req, connectionString) {
         // --- Otherwise, return a paginated list of all receipts with all fields ---
         const search = req.query.search || '';
         const status = req.query.status || '';
-        const locationId = req.query.locationId || '';
+        const locationName = req.query.location || '';   // ← changed from locationId
         const startDateParam = req.query.startDate || req.query.date || new Date().toISOString().slice(0, 10);
         const endDateParam = req.query.endDate || req.query.date || new Date().toISOString().slice(0, 10);
         const startDate = startDateParam + 'T00:00:00Z';
@@ -174,9 +174,10 @@ async function handleGet(context, req, connectionString) {
             params.push({ name: 'status', value: status, type: sql.NVarChar });
         }
 
-        if (locationId) {
-            conditions.push(`r.current_location_id = @locationId`);
-            params.push({ name: 'locationId', value: parseInt(locationId), type: sql.Int });
+        // ★★★ Location filter: use name ★★★
+        if (locationName) {
+            conditions.push(`l.name = @locationName`);
+            params.push({ name: 'locationName', value: locationName, type: sql.NVarChar });
         }
 
         // Date range filter
@@ -201,6 +202,7 @@ async function handleGet(context, req, connectionString) {
         let countQuery = `
             SELECT COUNT(*) AS total
             FROM FreightReceipts r
+            LEFT JOIN Locations l ON r.current_location_id = l.id
             WHERE 1=1
         `;
         if (conditions.length > 0) {
