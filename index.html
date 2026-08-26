@@ -24,6 +24,8 @@
     .nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 11px; border-radius: 13px; color: #cbd5e1; font-size: 13px; cursor: pointer; transition: 0.18s ease; user-select: none; }
     .nav-item:hover { background: rgba(255,255,255,0.08); color: white; transform: translateX(2px); }
     .nav-item.active { background: white; color: var(--ink); font-weight: 850; }
+    .nav-item.disabled { opacity: 0.38; cursor: not-allowed; color: #94a3b8; pointer-events: none; }
+    .nav-item.disabled:hover { background: transparent; color: #94a3b8; transform: none; }
     .nav-icon { width: 20px; text-align: center; }
     .sidebar-bottom { margin-top: auto; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px; }
     .role-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; padding: 12px; }
@@ -843,8 +845,8 @@
         <div class="nav-item" data-view="receive"><span class="nav-icon">＋</span>Goods Received</div>
         <div class="nav-item" data-view="tracking"><span class="nav-icon">⌕</span>Freight Tracking</div>
         <div class="nav-item" data-view="timeline"><span class="nav-icon">◷</span>Audit Timeline</div>
-        <div class="nav-item" data-view="reports"><span class="nav-icon">▥</span>Reports</div>
-        <div class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Admin / Settings</div>
+        <div class="nav-item disabled" data-view="reports" aria-disabled="true"><span class="nav-icon">▥</span>Reports</div>
+        <div class="nav-item disabled" data-view="settings" aria-disabled="true"><span class="nav-icon">⚙</span>Admin / Settings</div>
       </nav>
       <div class="sidebar-bottom"><div class="role-card"><div class="name">ELX Warehouse Team</div><div class="meta">Largs North Depot · BHP Freight</div></div></div>
     </aside>
@@ -1974,7 +1976,7 @@
 
     // ========== EVENT BINDINGS ==========
     $("chooseImageBtn").onclick = () => $("imageInput").click();
-    $("nav").addEventListener("click", function(e) { const n = e.target.closest(".nav-item"); if(n) setView(n.dataset.view); });
+    $("nav").addEventListener("click", function(e) { const n = e.target.closest(".nav-item"); if(n && !n.classList.contains("disabled")) setView(n.dataset.view); });
     $("startReceiveScan").onclick = openOcr;
     $("closeModal").onclick = $("cancelOcrBtn").onclick = closeOcr;
     $("closeMoveModal").onclick = $("cancelMoveBtn").onclick = closeMove;
