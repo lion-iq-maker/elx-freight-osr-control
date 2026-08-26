@@ -13,19 +13,15 @@ module.exports = async function (context, req) {
     try {
         const pool = await sql.connect(connectionString);
 
-        // Get date range from query params (default: today)
         const startDateParam = req.query.startDate || new Date().toISOString().slice(0, 10);
         const endDateParam = req.query.endDate || req.query.date || new Date().toISOString().slice(0, 10);
         const startDate = startDateParam + 'T00:00:00Z';
         const endDate = endDateParam + 'T23:59:59Z';
 
-        // Get all sites (static list from business, but we can also query distinct)
         const sites = ['BHP Olympic Dam', 'BHP Carrapateena', 'BHP Prominent Hill', 'Other / Unknown'];
-
         const results = [];
 
         for (const site of sites) {
-            // Query for this site
             const result = await pool.request()
                 .input('site', sql.NVarChar, site)
                 .input('startDate', sql.DateTime2, startDate)
@@ -54,7 +50,6 @@ module.exports = async function (context, req) {
             });
         }
 
-        // Overall totals
         const overallResult = await pool.request()
             .input('startDate', sql.DateTime2, startDate)
             .input('endDate', sql.DateTime2, endDate)
