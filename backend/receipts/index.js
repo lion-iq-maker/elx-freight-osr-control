@@ -49,7 +49,10 @@ async function handleGet(context, req, connectionString) {
                         r.gr_number AS grNumber,
                         r.supplier,
                         r.delivery_site AS site,
+                        r.bhp_contractor_name AS contractor,
                         r.po_number AS po,
+                        r.other_reference AS reference,
+                        r.connote,
                         r.current_status AS status,
                         l.name AS location,
                         r.received_by_display_name AS receivedBy,
@@ -85,7 +88,21 @@ async function handleGet(context, req, connectionString) {
             }
             const receipt = receiptResult.recordset[0];
 
-            // 2. Get lifecycle events for this receipt
+            // 2. Get individual line items
+            const itemsResult = await pool.request()
+                .input('receiptId', sql.BigInt, receipt.id)
+                .query(`
+                    SELECT id,
+                           item_type AS type,
+                           quantity  AS qty,
+                           weight_kg AS weight
+                    FROM FreightItems
+                    WHERE receipt_id = @receiptId
+                    ORDER BY id ASC
+                `);
+            receipt.items = itemsResult.recordset;
+
+            // 3. Get lifecycle events for this receipt
             const eventsResult = await pool.request()
                 .input('receiptId', sql.BigInt, receipt.id)
                 .query(`
@@ -324,8 +341,6 @@ async function handleTransition(context, req, connectionString) {
                 `);
 
             // ----- Event type + note -----
-            // Rejected  -> event_type = 'REJECTED', note IS the rejection reason
-            // Otherwise -> existing behaviour unchanged
             const eventType = isRejected ? 'REJECTED' : 'STATUS_CHANGE';
             const eventNote = isRejected
                 ? String(body.note).trim()
