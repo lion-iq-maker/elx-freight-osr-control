@@ -476,8 +476,6 @@
       margin-top: 6px !important;
     }
 
-    /* Keep the timeline panel inside the viewport; only use internal scroll if
-       there are more audit events than can physically fit. */
     #view-timeline .timeline-scroll {
       overflow-y: scroll !important;
       overflow-x: hidden !important;
@@ -489,8 +487,6 @@
       scrollbar-gutter: stable;
     }
 
-    /* Make sure the Audit Timeline grid/panel gives the scroll area a real
-       bounded height. This affects only the Audit Timeline tab. */
     #view-timeline .tab-grid {
       height: 100% !important;
       min-height: 0 !important;
@@ -511,7 +507,6 @@
 
   
     /* ===== Receipt popup: compact one-screen layout (PC + iPad) ===== */
-    /* Scoped ONLY to the Goods Received Receipt popup. Other tables/screens stay unchanged. */
     #receiptModal {
       position: fixed !important;
       inset: 0 !important;
@@ -665,7 +660,6 @@
       font-size: 9.5px !important;
     }
 
-    /* QR remains below the receipt details, but is compact so normal receipts fit in one popup. */
     #receiptModal .qr-panel {
       width: 100% !important;
       max-width: 100% !important;
@@ -763,7 +757,6 @@
       min-height: 34px !important;
     }
 
-    /* iPad / touch landscape: lock the popup to the visible viewport so it opens once at full size. */
     @media (min-width: 700px) and (max-width: 1366px) and (pointer: coarse) {
       #receiptModal {
         height: 100dvh !important;
@@ -799,7 +792,6 @@
       }
     }
 
-    /* Portrait/smaller screens: still never scroll sideways; only vertical overflow is allowed. */
     @media (max-width: 760px), (orientation: portrait) and (max-width: 900px) {
       #receiptModal .field-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -820,7 +812,7 @@
     }
 
   
-    /* Receipt popup readability polish: larger, clearer text without adding horizontal overflow. */
+    /* Receipt popup readability polish */
     #receiptModal .receipt-success,
     #receiptModal .receipt-ref,
     #receiptModal .detail-box,
@@ -836,7 +828,6 @@
   </style>
 </head>
 <body>
-  <!-- ========== HTML STRUCTURE ========== -->
   <div class="app">
     <aside class="sidebar">
       <div class="brand"><div class="brand-mark">ELX</div><div><h1>Freight Control</h1><p>Energy LogistiX · BHP Freight</p></div></div>
@@ -856,7 +847,6 @@
       </section>
       <section class="kpi-grid" id="kpiSection"></section>
       <section class="view-stage">
-        <!-- Dashboard -->
         <div class="view active" id="view-dashboard">
           <div class="panel fill">
             <div class="panel-head">
@@ -873,13 +863,12 @@
             <div class="board" id="workloadBoard"></div>
           </div>
         </div>
-        <!-- Receive -->
         <div class="view" id="view-receive">
           <div class="panel fill">
             <div class="panel-head"><div><h3>Goods Received</h3><p>Supplier driver handover · manual entry or OCR-assisted label capture.</p></div></div>
             <div class="split-grid">
-              <div class="upload-inline">
-                <div>
+              <div class="upload-inline" style="align-content:start;display:flex;flex-direction:column;gap:10px;padding:14px;overflow-y:auto;">
+                <div style="text-align:center;width:100%;">
                   <div class="camera-icon">▣</div>
                   <h4>Supplier driver receiving</h4>
                   <p>Use the ELX tablet/iPad to scan the freight label or enter the information manually. OCR never creates the record automatically.</p>
@@ -889,6 +878,18 @@
                     <div class="receipt-mini"><small>Total Qty</small><strong id="sumQty">0</strong></div>
                     <div class="receipt-mini"><small>Weight</small><strong id="sumWeight">0 kg</strong></div>
                   </div>
+                </div>
+
+                <div id="ocrReviewPanel" style="display:none;width:100%;border:1px solid var(--line);border-radius:14px;background:#fff;padding:10px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <strong style="font-size:12px;">OCR Extraction Review</strong>
+                    <button class="btn btn-light" id="copyAllOcrBtn" style="padding:4px 8px;font-size:10px;">Copy All</button>
+                  </div>
+                  <div id="ocrReviewFields" style="display:grid;gap:6px;font-size:11px;"></div>
+                  <details style="margin-top:8px;">
+                    <summary style="cursor:pointer;font-size:11px;color:#64748b;">Raw OCR text</summary>
+                    <div id="ocrReviewRaw" style="margin-top:6px;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:10px;color:#475569;max-height:180px;overflow:auto;background:var(--soft);padding:8px;border-radius:8px;">-</div>
+                  </details>
                 </div>
               </div>
               <div class="form-panel receive-form-wrap">
@@ -904,7 +905,7 @@
                 <table class="items-table"><tbody id="itemsBody"></tbody></table>
                 <button class="btn btn-ghost" id="addItemBtn">+ Add Freight Item</button>
                 <div style="margin-top:14px;font-weight:900;font-size:12px;">Receiving Details</div>
-                <div class="field-grid" style="margin-top:9px;"><div class="field"><label>Received By <span class="req">*</span></label><select id="receivedBy"></select></div></div>
+                <div class="field-grid" style="margin-top:9px;"><div class="field"><label>Received By <span class="req">*</span></label><select id="receivedBy"></select></div><div class="field"><label>Location</label><select id="location"><option value="">Select location</option></select></div></div>
                 <div class="field" style="margin-top:9px;"><label>Notes</label><textarea id="notes" placeholder="Damage, packaging condition, missing information, special handling, etc."></textarea></div>
                 <div style="display:flex;justify-content:space-between;gap:9px;margin-top:13px;align-items:center;flex-wrap:wrap;">
                   <span class="small-pill" id="timestampText">Timestamp recorded automatically</span>
@@ -914,7 +915,6 @@
             </div>
           </div>
         </div>
-        <!-- Tracking -->
         <div class="view" id="view-tracking">
           <div class="panel fill">
             <div class="panel-head"><div><h3>Freight Tracking</h3><p>Search any ELX GR and move freight through the operational lifecycle.</p></div></div>
@@ -955,28 +955,24 @@
             </div>
           </div>
         </div>
-        <!-- Locations (kept for compatibility, but can be hidden) -->
         <div class="view" id="view-locations">
           <div class="panel fill">
             <div class="panel-head"><div><h3>Locations / Cages</h3><p>Current freight allocation by BHP cage, exception area and dispatch zone.</p></div></div>
             <div class="map-large" id="largeWarehouseMap"></div>
           </div>
         </div>
-        <!-- Timeline -->
         <div class="view" id="view-timeline">
           <div class="tab-grid">
             <div class="panel fill"><div class="panel-head"><div><h3>Freight Records</h3><p>Select a GR to view the full audit trail.</p></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><label style="font-size:10px;font-weight:850;color:var(--muted);">From:</label><input type="date" id="timelineDateFrom" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:10px;"><label style="font-size:10px;font-weight:850;color:var(--muted);">To:</label><input type="date" id="timelineDateTo" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:10px;"><button class="btn btn-light" id="timelineDateBtn" style="padding:6px 10px;font-size:9px;">Apply</button><button class="btn btn-ghost" id="timelineDateReset" style="padding:6px 10px;font-size:9px;">Today</button></div></div><div class="scroll-area"><div class="card-list" id="timelineRecordList"></div></div></div>
             <div class="panel fill"><div class="panel-head"><div><h3>Audit Timeline</h3><p>Every major action, user, timestamp, location and status.</p></div></div><div class="timeline-scroll"><div id="timelineSummary"></div><div class="timeline-list" id="itemTimeline" style="margin-top:10px;"></div></div></div>
           </div>
         </div>
-        <!-- Reports -->
         <div class="view" id="view-reports">
           <div class="panel fill">
             <div class="panel-head"><div><h3>Reports & Invoice Readiness</h3><p>Live operational summary from the freight lifecycle dataset.</p></div></div>
             <div class="table-wrap"><table><thead><tr><th>Site</th><th>GR Records</th><th>Total Qty</th><th>Total Weight</th><th>Dispatched+</th><th>Ready to Invoice</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
           </div>
         </div>
-        <!-- Settings -->
         <div class="view" id="view-settings">
           <div class="tab-grid">
             <div class="panel fill"><div class="panel-head"><div><h3>ELX Staff</h3><p>Controls Received By and Updated By dropdowns.</p></div></div><div class="scroll-area"><div class="field"><label>Add ELX Staff Member</label><div style="display:flex;gap:9px;"><input id="newStaff" placeholder="Staff name"><button class="btn btn-primary" id="addStaffBtn">Add</button></div></div><div class="admin-list" id="staffList"></div></div></div>
@@ -987,7 +983,6 @@
     </main>
   </div>
 
-  <!-- Modals -->
   <div class="modal-backdrop" id="receiveModal">
     <div class="modal">
       <div class="modal-head"><div><h3>Scan Physical Label</h3><p style="margin:4px 0 0;color:#64748b;font-size:13px;">Take/upload photo → AI OCR extraction → human review → pre-fill Goods Received form.</p></div><button class="close" id="closeModal">×</button></div>
@@ -1062,7 +1057,7 @@
     const API_BASE = 'https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net/api';
 
     // ========== GLOBAL STATE ==========
-    const STATUS = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched","Delivered","Ready to Invoice"];
+    const STATUS = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched","Delivered","Ready to Invoice","Rejected"];
     const DEFAULT_STAFF = ["Rahul Tamang","Staff Member 2","Staff Member 3"];
     const DEFAULT_LOCATIONS = ["BHP Olympic Dam Cage","BHP Carrapateena Cage","BHP Prominent Hill Cage","Quarantine / Exception Area","General Receiving Area","Ready Dispatch Zone","Loaded / Outbound Bay"];
     let selectedId = null;
@@ -1099,7 +1094,7 @@
     function totalQty(r) { return r.items.reduce((a,i)=>a+(Number(i.qty)||0),0); }
     function totalWeight(r) { return r.items.reduce((a,i)=>a+(Number(i.weight)||0),0); }
     function fmt(v) { return new Date(v).toLocaleString([],{day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"}); }
-    function tone(status) { return {"Goods Received":"blue","Location Assigned":"purple","SAP Validated":"amber","Ready for Dispatch":"green","Dispatched":"grey","Delivered":"green","Ready to Invoice":"purple"}[status] || "grey"; }
+    function tone(status) { return {"Goods Received":"blue","Location Assigned":"purple","SAP Validated":"amber","Ready for Dispatch":"green","Dispatched":"grey","Delivered":"green","Ready to Invoice":"purple","Rejected":"red"}[status] || "grey"; }
     function showToast(message) { const t=$("toast"); t.textContent=message; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
 
     const titles = {
@@ -1150,7 +1145,7 @@
         return dates;
     }
 
-    // ========== DASHBOARD API (aggregates multiple dates) ==========
+    // ========== DASHBOARD API ==========
     async function loadDashboard() {
         const from = document.getElementById('dashboardDateFrom').value || getLocalToday();
         const to = document.getElementById('dashboardDateTo').value || from;
@@ -1262,7 +1257,7 @@
         </div>`;
     }
 
-    // ========== RENDER TRACKING (API-based with date aggregation) ==========
+    // ========== RENDER TRACKING ==========
     async function renderTracking() {
         const search = document.getElementById('searchInput').value.trim();
         const statusFilter = document.getElementById('statusFilter').value;
@@ -1333,13 +1328,13 @@
         }
     }
 
-    // ========== LOCATIONS (unchanged, kept for compatibility) ==========
+    // ========== LOCATIONS ==========
     function renderLocations() {
       $("largeWarehouseMap").innerHTML=state.locations.map((loc,i)=>{ const rows=state.records.filter(r=>r.location===loc); return `<div class="bay location-cage-card" data-location="${esc(loc)}" style="cursor:pointer;"><div><h4>${esc(loc)}</h4><small>${rows.length ? "Current freight in this location" : "Location currently clear"}</small></div><div class="big">${rows.length}</div></div>`; }).join("");
       document.querySelectorAll(".location-cage-card").forEach(card=>{ card.onclick=()=>{ activeLocationFilter=card.dataset.location; if ($("locationFilter")) $("locationFilter").value = activeLocationFilter; setView("tracking"); renderTracking(); }; });
     }
 
-    // ========== UPDATED RENDER TIMELINE (Azure API + date range) ==========
+    // ========== RENDER TIMELINE ==========
     async function renderTimeline() {
         const listContainer = document.getElementById('timelineRecordList');
         const from = document.getElementById('timelineDateFrom')?.value || getLocalToday();
@@ -1410,20 +1405,17 @@
         } catch (err) {
             console.error('Timeline list error:', err);
             listContainer.innerHTML = `<div style="padding:12px;color:#b91c1c;">Error loading records: ${esc(err.message)}</div>`;
-            // Preserve the existing fallback behaviour.
             fallbackTimeline();
         }
     }
 
     function fallbackTimeline() {
-        // old localStorage-based implementation
         $("timelineRecordList").innerHTML=state.records.map(r=>`<div class="mini-card timelineRecord" data-id="${esc(r.id)}"><strong>${esc(r.id)}</strong><p style="color:#64748b;font-size:12px;margin:5px 0 0;">${esc(r.supplier)} · ${esc(r.status)}</p></div>`).join("");
         document.querySelectorAll(".timelineRecord").forEach(x=>x.onclick=()=>showTimeline(x.dataset.id));
         if(!selectedId && state.records[0]) selectedId=state.records[0].id;
         if(selectedId) showTimeline(selectedId,false);
     }
 
-    // ========== UPDATED SHOW TIMELINE (Azure API) ==========
     async function showTimeline(id, setSelected = true) {
         if (setSelected) selectedId = id;
         const summaryDiv = document.getElementById('timelineSummary');
@@ -1459,7 +1451,6 @@
             }
 
             let html = '';
-            // Show newest first
             events.slice().reverse().forEach(e => {
                 const statusBadge = e.status ? `<span class="badge ${tone(e.status)}">${esc(e.status)}</span>` : '';
                 html += `
@@ -1482,7 +1473,6 @@
             console.error('Timeline detail error:', err);
             summaryDiv.innerHTML = `<div style="padding:12px;color:#b91c1c;">Error: ${esc(err.message)}</div>`;
             eventsDiv.innerHTML = '';
-            // Preserve the existing fallback behaviour.
             fallbackShowTimeline(id, setSelected);
         }
     }
@@ -1495,7 +1485,7 @@
         $("itemTimeline").innerHTML=(r.events||[]).slice().reverse().map(e=>`<div class="time-event"><div><strong>${esc(e.event)}</strong><br><small style="color:#64748b;">${fmt(e.time)} · ${esc(e.user||"System")} · ${esc(e.location||"-")}</small><br><small style="color:#64748b;">${esc(e.note||"")}</small></div><span class="badge ${tone(e.status)}">${esc(e.status)}</span></div>`).join("");
     }
 
-    // ========== REPORTS (unchanged) ==========
+    // ========== REPORTS ==========
     function renderReports() {
       const sites=["BHP Olympic Dam","BHP Carrapateena","BHP Prominent Hill","Other / Unknown"];
       $("reportsBody").innerHTML=sites.map(site=>{ const rs=state.records.filter(r=>r.site===site); return `<tr><td><strong>${site}</strong></td><td>${rs.length}</td><td>${rs.reduce((a,r)=>a+totalQty(r),0)}</td><td>${Math.round(rs.reduce((a,r)=>a+totalWeight(r),0))} kg</td><td>${rs.filter(r=>STATUS.indexOf(r.status)>=4).length}</td><td>${rs.filter(r=>r.status==="Ready to Invoice").length}</td></tr>`; }).join("");
@@ -1512,12 +1502,12 @@
       document.querySelectorAll(".removeLocation").forEach(b=>b.onclick=()=>{ if(state.locations.length>1){ state.locations.splice(+b.dataset.i,1); saveState(); renderAll(); } });
     }
 
-    // ========== UPDATED RENDER ALL ==========
+    // ========== RENDER ALL ==========
     function renderAll() {
       loadDashboard();
       renderLocations();
       renderTracking();
-      renderTimeline();   // now uses API
+      renderTimeline();
       renderReports();
       syncMasterData();
       updateItemSummary();
@@ -1565,6 +1555,7 @@
       ["supplier","contractor","po","reference","connote","notes"].forEach(id=>$(id).value="");
       $("site").value="";
       $("receivedBy").value="";
+      if ($("location")) $("location").value = "";
       resetItems();
     }
 
@@ -1582,6 +1573,52 @@
       $("ocrBadge").className = "badge blue";
       $("meterBar").style.width = "0%";
     };
+
+    // ========== OCR EXTRACTION REVIEW PANEL ==========
+    function showOcrReviewPanel(extracted, rawText) {
+      const panel = document.getElementById('ocrReviewPanel');
+      const fields = document.getElementById('ocrReviewFields');
+      if (!panel || !fields) return;
+
+      const labels = {
+        supplier: 'Supplier', site: 'Delivery Site', contractor: 'BHP Contractor',
+        po: 'PO Number', reference: 'Other Reference', connote: 'Connote',
+        itemType: 'Item Type', qty: 'Quantity', weight: 'Weight (kg)'
+      };
+
+      let html = '';
+      Object.keys(labels).forEach(k => {
+        const v = extracted[k];
+        if (v === undefined || v === null || v === '') return;
+        html += `
+          <div style="display:flex;justify-content:space-between;gap:6px;padding:5px 8px;background:var(--soft);border-radius:8px;align-items:center;">
+            <span style="color:#64748b;min-width:104px;">${labels[k]}</span>
+            <span style="font-weight:700;text-align:right;flex:1;word-break:break-word;">${esc(v)}</span>
+            <button class="btn btn-light ocrCopyBtn" data-copy="${esc(v)}" style="padding:2px 8px;font-size:9px;">Copy</button>
+          </div>`;
+      });
+      if (!html) html = '<div style="color:#64748b;padding:6px;">No fields detected.</div>';
+      fields.innerHTML = html;
+
+      document.getElementById('ocrReviewRaw').textContent = rawText || '(no raw text)';
+
+      document.querySelectorAll('.ocrCopyBtn').forEach(b => {
+        b.onclick = () => {
+          navigator.clipboard.writeText(b.dataset.copy || '').then(() => showToast('Copied'));
+        };
+      });
+
+      const copyAll = document.getElementById('copyAllOcrBtn');
+      if (copyAll) copyAll.onclick = () => {
+        const txt = Object.keys(labels)
+          .filter(k => extracted[k])
+          .map(k => `${labels[k]}: ${extracted[k]}`)
+          .join('\n');
+        navigator.clipboard.writeText(txt).then(() => showToast('All fields copied'));
+      };
+
+      panel.style.display = 'block';
+    }
 
     // ========== RUN OCR ==========
     $("runOcrBtn").onclick = async function() {
@@ -1661,6 +1698,7 @@
         }
 
         $("rawOcr").textContent = data.rawText || "(No raw OCR text returned)";
+        showOcrReviewPanel(extracted, data.rawText || "");
         $("ocrBadge").textContent = "AI Extraction Complete";
         $("ocrBadge").className = "badge green";
         $("ocrProgress").textContent = "Fields extracted by Azure AI — review before using.";
@@ -1749,6 +1787,7 @@
         reference: $("reference").value.trim() || null,
         connote: $("connote").value.trim() || null,
         notes: $("notes").value.trim() || null,
+        location: ($("location") && $("location").value) || null,
         receivedBy: $("receivedBy").value,
         items: items
       };
@@ -1935,7 +1974,18 @@
         const targetStatus = document.getElementById('moveStatus').value;
         const location = document.getElementById('moveLocation').value;
         const receivedBy = document.getElementById('moveUser').value;
-        const note = document.getElementById('moveNote').value.trim();
+        let note = document.getElementById('moveNote').value.trim();
+
+        // Rejected requires a reason (handover §6)
+        if (targetStatus === 'Rejected' && !note) {
+            const entered = prompt('Please enter a rejection reason:');
+            if (!entered || !entered.trim()) {
+                showToast('Rejection reason is required');
+                return;
+            }
+            note = entered.trim();
+            document.getElementById('moveNote').value = note;
+        }
 
         const payload = {
             targetStatus: targetStatus,
@@ -2018,8 +2068,57 @@
     document.getElementById('timelineDateFrom').value = defaultToday;
     document.getElementById('timelineDateTo').value = defaultToday;
 
-    // Populate location filter
-    $("locationFilter").innerHTML = '<option value="">All Locations</option>' + state.locations.map(loc => `<option value="${esc(loc)}">${esc(loc)}</option>`).join("");
+    // ========== DYNAMIC STAFF + LOCATIONS FROM AZURE ==========
+    function populateLocationDropdown() {
+      const el = document.getElementById('location');
+      if (!el) return;
+      const cur = el.value;
+      el.innerHTML = '<option value="">Select location</option>' +
+        state.locations.map(loc => `<option value="${esc(loc)}">${esc(loc)}</option>`).join("");
+      if (state.locations.includes(cur)) el.value = cur;
+    }
+
+    function populateLocationFilter() {
+      const el = document.getElementById('locationFilter');
+      if (!el) return;
+      const cur = el.value;
+      el.innerHTML = '<option value="">All Locations</option>' +
+        state.locations.map(loc => `<option value="${esc(loc)}">${esc(loc)}</option>`).join("");
+      if (state.locations.includes(cur)) el.value = cur;
+    }
+
+    async function loadStaffAndLocations() {
+      try {
+        const r = await fetch(`${API_BASE}/staff`);
+        if (r.ok) {
+          const d = await r.json();
+          if (Array.isArray(d.staff) && d.staff.length) {
+            state.staff = d.staff.map(s => s.displayName);
+          }
+        }
+      } catch (e) { console.warn('Staff API failed, using local fallback'); }
+
+      try {
+        const r = await fetch(`${API_BASE}/locations`);
+        if (r.ok) {
+          const d = await r.json();
+          if (Array.isArray(d.locations) && d.locations.length) {
+            state.locations = d.locations.map(l => l.name);
+          }
+        }
+      } catch (e) { console.warn('Locations API failed, using local fallback'); }
+
+      syncMasterData();
+      populateLocationDropdown();
+      populateLocationFilter();
+    }
+
+    // Initial population from current state (immediate UI)
+    populateLocationDropdown();
+    populateLocationFilter();
+
+    // Refresh from Azure in the background
+    loadStaffAndLocations();
 
     // ========== ADMIN ==========
     $("addStaffBtn").onclick = function() {
