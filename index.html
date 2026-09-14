@@ -451,6 +451,20 @@
                 <button class="btn btn-ghost" id="addItemBtn">+ Add Freight Item</button>
                 <div style="margin-top:14px;font-weight:900;font-size:12px;">Receiving Details</div>
                 <div class="field-grid" style="margin-top:9px;"><div class="field"><label>Received By <span class="req">*</span></label><select id="receivedBy"></select></div><div class="field"><label>Location</label><select id="location"><option value="">Select location</option></select></div></div>
+
+                <div class="field" style="margin-top:9px;">
+                  <label>Freight Photo (box / pallet)</label>
+                  <input type="file" id="freightPhotoInput" accept="image/*" capture="environment" style="display:none;">
+                  <div style="display:flex;gap:9px;align-items:flex-start;flex-wrap:wrap;">
+                    <button class="btn btn-light" id="takeFreightPhotoBtn" type="button">📷 Take / Choose Photo</button>
+                    <button class="btn btn-light" id="removeFreightPhotoBtn" type="button" style="display:none;">Remove Photo</button>
+                  </div>
+                  <div id="freightPhotoPreviewWrap" style="display:none;margin-top:9px;">
+                    <img id="freightPhotoPreview" style="max-width:220px;max-height:220px;border-radius:12px;border:1px solid var(--line);background:white;object-fit:contain;">
+                    <div id="freightPhotoSize" style="font-size:10px;color:var(--muted);margin-top:4px;"></div>
+                  </div>
+                </div>
+
                 <div class="field" style="margin-top:9px;"><label>Notes</label><textarea id="notes" placeholder="Damage, packaging condition, missing information, special handling, etc."></textarea></div>
                 <div style="display:flex;justify-content:space-between;gap:9px;margin-top:13px;align-items:center;flex-wrap:wrap;">
                   <span class="small-pill" id="timestampText">Timestamp recorded automatically</span>
@@ -627,6 +641,8 @@
     let selectedFile = null;
     let activeLocationFilter = "";
     let lastOcrExtraction = null;
+    let labelPhotoBase64 = null;
+    let freightPhotoBase64 = null;
 
     function seedRecord(id,supplier,po,site,location,status,qty,weight,user) {
       const t = new Date(Date.now() - Math.floor(Math.random()*6)*3600000).toISOString();
@@ -1120,8 +1136,94 @@
       $("receivedBy").value="";
       if ($("location")) $("location").value = "";
       lastOcrExtraction = null;
+      labelPhotoBase64 = null;
+      freightPhotoBase64 = null;
+      setFreightPhotoPreview(null);
       resetItems();
     }
+
+    // ========== IMAGE COMPRESSION + PHOTO PREVIEWS ==========
+    async function compressImage(file, maxWidth = 1280, quality = 0.7) {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.onerror = () => reject(new Error('Could not read image'));
+        fr.readAsDataURL(file);
+      });
+
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error('Could not decode image'));
+        i.src = dataUrl;
+      });
+
+      let w = img.naturalWidth || img.width;
+      let h = img.naturalHeight || img.height;
+      if (w > maxWidth) { h = Math.round(h * (maxWidth / w)); w = maxWidth; }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      return canvas.toDataURL('image/jpeg', quality);
+    }
+
+    function setFreightPhotoPreview(base64) {
+      const wrap = document.getElementById('freightPhotoPreviewWrap');
+      const img = document.getElementById('freightPhotoPreview');
+      const sizeEl = document.getElementById('freightPhotoSize');
+      const removeBtn = document.getElementById('removeFreightPhotoBtn');
+      if (!wrap || !img) return;
+
+      if (!base64) {
+        wrap.style.display = 'none';
+        if (removeBtn) removeBtn.style.display = 'none';
+        return;
+      }
+      img.src = base64;
+      wrap.style.display = 'block';
+      if (removeBtn) removeBtn.style.display = 'inline-flex';
+
+      if (sizeEl) {
+        const kb = Math.round((base64.length * 3 / 4) / 1024);
+        sizeEl.textContent = `Approx ${kb} KB (compressed)`;
+      }
+    }
+
+    (function bindFreightPhotoControls() {
+      const input = document.getElementById('freightPhotoInput');
+      const takeBtn = document.getElementById('takeFreightPhotoBtn');
+      const removeBtn = document.getElementById('removeFreightPhotoBtn');
+      if (!input || !takeBtn) return;
+
+      takeBtn.onclick = () => input.click();
+
+      input.onchange = async function(e) {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        try {
+          const compressed = await compressImage(f);
+          freightPhotoBase64 = compressed;
+          setFreightPhotoPreview(compressed);
+          showToast('Freight photo attached');
+        } catch (err) {
+          console.error('Freight photo error:', err);
+          showToast('Could not process photo: ' + err.message);
+        } finally {
+          input.value = '';
+        }
+      };
+
+      if (removeBtn) {
+        removeBtn.onclick = () => {
+          freightPhotoBase64 = null;
+          setFreightPhotoPreview(null);
+          showToast('Freight photo removed');
+        };
+      }
+    })();
 
     $("imageInput").onchange = function(e) {
       const f = e.target.files[0];
@@ -1209,6 +1311,12 @@
             finalBlob = file;
           }
         }
+
+        // Keep a compressed copy of the label photo for the GR record.
+        compressImage(finalBlob).then(c => {
+          labelPhotoBase64 = c;
+          console.log('Label photo stored for GR:', Math.round((c.length * 3 / 4) / 1024) + ' KB');
+        }).catch(err => console.warn('Label photo compress failed:', err));
 
         const reader = new FileReader();
         const base64 = await new Promise((resolve, reject) => {
@@ -1356,7 +1464,9 @@
         location: ($("location") && $("location").value) || null,
         receivedBy: $("receivedBy").value,
         items: items,
-        ocrExtraction: lastOcrExtraction
+        ocrExtraction: lastOcrExtraction,
+        labelPhoto: labelPhotoBase64,
+        freightPhoto: freightPhotoBase64
       };
 
       const btn = $("confirmReceiveBtn");
@@ -1389,6 +1499,8 @@
 
         showReceipt(localRecord);
         lastOcrExtraction = null;
+        labelPhotoBase64 = null;
+        freightPhotoBase64 = null;
         clearReceive();
         showToast(data.grNumber + " created successfully");
 
@@ -1485,6 +1597,22 @@
               ` : ''}
             </div>
           ` : ''}
+
+          ${r.labelPhoto ? `
+            <div class="detail-box" style="margin-bottom:10px;">
+              <div style="font-weight:900;font-size:12px;margin-bottom:6px;">Label Photo (as scanned for OCR)</div>
+              <img src="${r.labelPhoto}" alt="Label photo" style="max-width:100%;max-height:420px;border-radius:12px;border:1px solid var(--line);background:white;object-fit:contain;cursor:zoom-in;" onclick="window.open(this.src, '_blank')">
+              <div style="margin-top:6px;font-size:10px;color:var(--muted);">Tap/click image to open full size.</div>
+            </div>
+          ` : ''}
+
+          ${r.freightPhoto ? `
+            <div class="detail-box" style="margin-bottom:10px;">
+              <div style="font-weight:900;font-size:12px;margin-bottom:6px;">Freight Photo (physical box / pallet)</div>
+              <img src="${r.freightPhoto}" alt="Freight photo" style="max-width:100%;max-height:420px;border-radius:12px;border:1px solid var(--line);background:white;object-fit:contain;cursor:zoom-in;" onclick="window.open(this.src, '_blank')">
+              <div style="margin-top:6px;font-size:10px;color:var(--muted);">Tap/click image to open full size.</div>
+            </div>
+          ` : ''}
         `;
 
         document.getElementById('grDetailUpdateBtn').onclick = () => {
@@ -1537,12 +1665,6 @@
       showToast("Receipt opened — use browser Print → Save as PDF");
     }
 
-    function nextId() {
-      const d=new Date();
-      const p=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
-      const nums=state.records.filter(r=>r.id.includes(p)).map(r=>Number(r.id.split("-").pop())).filter(Number.isFinite);
-      return `ELX-GR-${p}-${String(Math.max(0,...nums)+1).padStart(5,"0")}`;
-    }
     function makeReceiptToken() {
       const bytes = new Uint8Array(18);
       if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
