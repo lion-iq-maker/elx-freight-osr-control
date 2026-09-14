@@ -59,6 +59,7 @@ async function handleGet(context, req, connectionString) {
                         r.received_at_utc AS receivedAt,
                         r.updated_at_utc AS updatedAt,
                         r.notes,
+                        r.ocr_extraction AS ocrExtraction,
                         (
                             SELECT STRING_AGG(CONCAT(item_type, ' x', quantity, ' (', weight_kg, ' kg)'), ', ')
                             FROM FreightItems fi
@@ -87,6 +88,12 @@ async function handleGet(context, req, connectionString) {
                 return;
             }
             const receipt = receiptResult.recordset[0];
+
+            // Parse OCR JSON if present
+            if (receipt.ocrExtraction) {
+                try { receipt.ocrExtraction = JSON.parse(receipt.ocrExtraction); }
+                catch (e) { /* leave as string if not valid JSON */ }
+            }
 
             // 2. Get individual line items
             const itemsResult = await pool.request()
@@ -464,6 +471,8 @@ async function handlePost(context, req, connectionString) {
                 .input('reference', sql.NVarChar, body.reference || null)
                 .input('connote', sql.NVarChar, body.connote || null)
                 .input('notes', sql.NVarChar, body.notes || null)
+                .input('ocrExtraction', sql.NVarChar(sql.MAX),
+                    body.ocrExtraction ? JSON.stringify(body.ocrExtraction) : null)
                 .input('status', sql.NVarChar, 'Goods Received')
                 .input('locationId', sql.Int, locationId)
                 .input('userId', sql.Int, userId)
@@ -472,14 +481,14 @@ async function handlePost(context, req, connectionString) {
                 .query(`
                     INSERT INTO FreightReceipts (
                         gr_number, supplier, delivery_site, bhp_contractor_name,
-                        po_number, other_reference, connote, notes,
+                        po_number, other_reference, connote, notes, ocr_extraction,
                         current_status, current_location_id,
                         received_by_user_id, received_by_display_name, received_at_utc
                     )
                     OUTPUT INSERTED.id
                     VALUES (
                         @grNumber, @supplier, @site, @contractor,
-                        @po, @reference, @connote, @notes,
+                        @po, @reference, @connote, @notes, @ocrExtraction,
                         @status, @locationId,
                         @userId, @displayName, @receivedAt
                     )
