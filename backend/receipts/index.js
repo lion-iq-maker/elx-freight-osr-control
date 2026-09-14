@@ -60,6 +60,8 @@ async function handleGet(context, req, connectionString) {
                         r.updated_at_utc AS updatedAt,
                         r.notes,
                         r.ocr_extraction AS ocrExtraction,
+                        r.label_photo AS labelPhoto,
+                        r.freight_photo AS freightPhoto,
                         (
                             SELECT STRING_AGG(CONCAT(item_type, ' x', quantity, ' (', weight_kg, ' kg)'), ', ')
                             FROM FreightItems fi
@@ -436,10 +438,37 @@ async function handlePost(context, req, connectionString) {
 
         try {
             const grDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-            const countResult = await transaction.request().query(
-                `SELECT COUNT(*) AS count FROM FreightReceipts WHERE gr_number LIKE 'ELX-GR-${grDate}-%'`
-            );
-            const sequence = String(Number(countResult.recordset[0].count) + 1).padStart(5, '0');
+
+            // Atomic per-day sequence.
+            // - First GR of the day: seed the row from the max existing suffix (handles any pre-existing data).
+            // - Subsequent GRs: lock the row, bump the counter, return the new value.
+            // - Concurrent requests serialise on the row lock — no duplicates possible.
+            const seqResult = await transaction.request()
+                .input('grDate', sql.Char(8), grDate)
+                .query(`
+                    IF NOT EXISTS (
+                        SELECT 1 FROM dbo.GrNumberSequence WITH (UPDLOCK, HOLDLOCK)
+                        WHERE seq_date = @grDate
+                    )
+                    BEGIN
+                        DECLARE @seed INT = ISNULL(
+                            (SELECT MAX(CAST(RIGHT(gr_number, 5) AS INT))
+                             FROM dbo.FreightReceipts
+                             WHERE gr_number LIKE 'ELX-GR-' + @grDate + '-%'),
+                            0
+                        );
+                        INSERT INTO dbo.GrNumberSequence (seq_date, next_seq)
+                        VALUES (@grDate, @seed);
+                    END
+
+                    UPDATE dbo.GrNumberSequence
+                    SET next_seq = next_seq + 1
+                    OUTPUT INSERTED.next_seq AS nextSeq
+                    WHERE seq_date = @grDate;
+                `);
+
+            const nextSeq = seqResult.recordset[0].nextSeq;
+            const sequence = String(nextSeq).padStart(5, '0');
             const grNumber = `ELX-GR-${grDate}-${sequence}`;
 
             let locationId = null;
@@ -473,6 +502,10 @@ async function handlePost(context, req, connectionString) {
                 .input('notes', sql.NVarChar, body.notes || null)
                 .input('ocrExtraction', sql.NVarChar(sql.MAX),
                     body.ocrExtraction ? JSON.stringify(body.ocrExtraction) : null)
+                .input('labelPhoto', sql.NVarChar(sql.MAX),
+                    body.labelPhoto || null)
+                .input('freightPhoto', sql.NVarChar(sql.MAX),
+                    body.freightPhoto || null)
                 .input('status', sql.NVarChar, 'Goods Received')
                 .input('locationId', sql.Int, locationId)
                 .input('userId', sql.Int, userId)
@@ -482,6 +515,7 @@ async function handlePost(context, req, connectionString) {
                     INSERT INTO FreightReceipts (
                         gr_number, supplier, delivery_site, bhp_contractor_name,
                         po_number, other_reference, connote, notes, ocr_extraction,
+                        label_photo, freight_photo,
                         current_status, current_location_id,
                         received_by_user_id, received_by_display_name, received_at_utc
                     )
@@ -489,6 +523,7 @@ async function handlePost(context, req, connectionString) {
                     VALUES (
                         @grNumber, @supplier, @site, @contractor,
                         @po, @reference, @connote, @notes, @ocrExtraction,
+                        @labelPhoto, @freightPhoto,
                         @status, @locationId,
                         @userId, @displayName, @receivedAt
                     )
