@@ -115,7 +115,7 @@ async function handleGet(context, req, connectionString) {
         // --- Otherwise, return a paginated list of all receipts with all fields ---
         const search = req.query.search || '';
         const status = req.query.status || '';
-        const locationName = req.query.location || '';   // ← changed from locationId
+        const locationName = req.query.location || '';
         const startDateParam = req.query.startDate || req.query.date || new Date().toISOString().slice(0, 10);
         const endDateParam = req.query.endDate || req.query.date || new Date().toISOString().slice(0, 10);
         const startDate = startDateParam + 'T00:00:00Z';
@@ -174,7 +174,6 @@ async function handleGet(context, req, connectionString) {
             params.push({ name: 'status', value: status, type: sql.NVarChar });
         }
 
-        // ★★★ Location filter: use name ★★★
         if (locationName) {
             conditions.push(`l.name = @locationName`);
             params.push({ name: 'locationName', value: locationName, type: sql.NVarChar });
@@ -256,6 +255,16 @@ async function handleTransition(context, req, connectionString) {
             return;
         }
 
+        // ----- Rejected requires a reason (handover §6) -----
+        const isRejected = body.targetStatus === 'Rejected';
+        if (isRejected && (!body.note || !String(body.note).trim())) {
+            context.res = {
+                status: 400,
+                body: JSON.stringify({ error: 'Rejected status requires a rejection reason' })
+            };
+            return;
+        }
+
         const pool = await sql.connect(connectionString);
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
@@ -314,10 +323,17 @@ async function handleTransition(context, req, connectionString) {
                     WHERE gr_number = @grNumber
                 `);
 
-            const eventNote = body.note || `Status: ${oldStatus} → ${body.targetStatus} | Location: ${oldLocationName} → ${body.location || oldLocationName}`;
+            // ----- Event type + note -----
+            // Rejected  -> event_type = 'REJECTED', note IS the rejection reason
+            // Otherwise -> existing behaviour unchanged
+            const eventType = isRejected ? 'REJECTED' : 'STATUS_CHANGE';
+            const eventNote = isRejected
+                ? String(body.note).trim()
+                : (body.note || `Status: ${oldStatus} → ${body.targetStatus} | Location: ${oldLocationName} → ${body.location || oldLocationName}`);
+
             await transaction.request()
                 .input('receiptId', sql.BigInt, receipt.id)
-                .input('eventType', sql.NVarChar, 'STATUS_CHANGE')
+                .input('eventType', sql.NVarChar, eventType)
                 .input('oldStatus', sql.NVarChar, oldStatus)
                 .input('newStatus', sql.NVarChar, body.targetStatus)
                 .input('oldLocationId', sql.Int, oldLocationId)
