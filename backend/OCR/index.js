@@ -60,13 +60,15 @@ module.exports = async function (context, req) {
 
         if (!response.ok) {
             const errorText = await response.text();
+
             throw new Error(
                 `Azure Document Intelligence error: ` +
                 `${response.status} - ${errorText}`
             );
         }
 
-        const operationLocation = response.headers.get('operation-location');
+        const operationLocation =
+            response.headers.get('operation-location');
 
         if (!operationLocation) {
             throw new Error(
@@ -81,24 +83,30 @@ module.exports = async function (context, req) {
         const maxAttempts = 30;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            const pollResponse = await fetch(operationLocation, {
-                headers: {
-                    'Ocp-Apim-Subscription-Key': key
-                }
-            });
+            const pollResponse =
+                await fetch(operationLocation, {
+                    headers: {
+                        'Ocp-Apim-Subscription-Key': key
+                    }
+                });
 
             if (!pollResponse.ok) {
-                const pollError = await pollResponse.text();
+                const pollError =
+                    await pollResponse.text();
+
                 throw new Error(
                     `Azure polling error: ` +
                     `${pollResponse.status} - ${pollError}`
                 );
             }
 
-            const pollData = await pollResponse.json();
+            const pollData =
+                await pollResponse.json();
 
             if (pollData.status === 'succeeded') {
-                analyzeResult = pollData.analyzeResult;
+                analyzeResult =
+                    pollData.analyzeResult;
+
                 break;
             }
 
@@ -109,7 +117,9 @@ module.exports = async function (context, req) {
                 );
             }
 
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve =>
+                setTimeout(resolve, 1000)
+            );
         }
 
         if (!analyzeResult) {
@@ -214,52 +224,106 @@ module.exports = async function (context, req) {
         }
 
         function cleanValue(value) {
-            if (value === null || value === undefined) {
+            if (
+                value === null ||
+                value === undefined
+            ) {
                 return '';
             }
 
-            let result = String(value).trim();
+            let result =
+                String(value).trim();
 
-            // Remove only leading/trailing separator noise.
-            // Do NOT remove internal hyphens/slashes.
-            result = result.replace(/^[\s:|=*]+/, '');
-            result = result.replace(/[\s:*]+$/, '');
-            result = result.replace(/\s+/g, ' ');
+            result =
+                result.replace(
+                    /^[\s:|=*]+/,
+                    ''
+                );
+
+            result =
+                result.replace(
+                    /[\s:*]+$/,
+                    ''
+                );
+
+            result =
+                result.replace(
+                    /\s+/g,
+                    ' '
+                );
 
             return result.trim();
         }
 
-        function isValidValue(field, value) {
-            const cleaned = cleanValue(value);
+        function isValidValue(
+            field,
+            value
+        ) {
+            const cleaned =
+                cleanValue(value);
 
             if (!cleaned) {
                 return false;
             }
 
             // Prevent labels from becoming values
-            const normalizedValue = normalizeLabel(cleaned);
-            const allKnownLabels = Object.values(fieldDefinitions).flat();
+            const normalizedValue =
+                normalizeLabel(cleaned);
 
-            for (const knownLabel of allKnownLabels) {
-                const normalizedKnown = normalizeLabel(knownLabel);
+            const allKnownLabels =
+                Object.values(
+                    fieldDefinitions
+                ).flat();
 
-                if (normalizedValue === normalizedKnown) {
+            for (
+                const knownLabel
+                of allKnownLabels
+            ) {
+                const normalizedKnown =
+                    normalizeLabel(
+                        knownLabel
+                    );
+
+                if (
+                    normalizedValue ===
+                    normalizedKnown
+                ) {
                     return false;
                 }
             }
 
             if (field === 'qty') {
                 return /^\d{1,6}$/.test(
-                    cleaned.replace(/,/g, '')
+                    cleaned.replace(
+                        /,/g,
+                        ''
+                    )
                 );
             }
 
             if (field === 'weight') {
-                return /^\d[\d,.]*(\s*kg)?$/i.test(cleaned);
+                return /^\d[\d,.]*(\s*kg)?$/i.test(
+                    cleaned
+                );
             }
 
+            // --------------------------------------------------------
+            // ELX PO RULE
+            //
+            // Only map PO if:
+            // - exactly 10 digits
+            // - starts with 450, 451 or 452
+            // --------------------------------------------------------
             if (field === 'po') {
-                return cleaned.length >= 3;
+                const poCandidate =
+                    cleaned.replace(
+                        /\s+/g,
+                        ''
+                    );
+
+                return /^45[0-2]\d{7}$/.test(
+                    poCandidate
+                );
             }
 
             if (
@@ -276,36 +340,52 @@ module.exports = async function (context, req) {
             return true;
         }
 
-        function labelsMatch(actualLabel, aliases) {
-            const actual = normalizeLabel(actualLabel);
+        function labelsMatch(
+            actualLabel,
+            aliases
+        ) {
+            const actual =
+                normalizeLabel(
+                    actualLabel
+                );
 
             if (!actual) {
                 return false;
             }
 
-            return aliases.some(alias => {
-                const expected = normalizeLabel(alias);
+            return aliases.some(
+                alias => {
+                    const expected =
+                        normalizeLabel(
+                            alias
+                        );
 
-                if (actual === expected) {
-                    return true;
+                    if (
+                        actual === expected
+                    ) {
+                        return true;
+                    }
+
+                    if (
+                        expected.length >= 5 &&
+                        actual.startsWith(
+                            expected + ' '
+                        )
+                    ) {
+                        return true;
+                    }
+
+                    return false;
                 }
-
-                if (
-                    expected.length >= 5 &&
-                    actual.startsWith(expected + ' ')
-                ) {
-                    return true;
-                }
-
-                return false;
-            });
+            );
         }
 
         function escapeRegExp(value) {
-            return String(value).replace(
-                /[.*+?^${}()|[\]\\]/g,
-                '\\$&'
-            );
+            return String(value)
+                .replace(
+                    /[.*+?^${}()|[\]\\]/g,
+                    '\\$&'
+                );
         }
 
         // ============================================================
@@ -335,8 +415,8 @@ module.exports = async function (context, req) {
             weight: ''
         };
 
-        // Raw OCR text is useful for diagnostics and fallback parsing.
-        const rawText = analyzeResult.content || '';
+        const rawText =
+            analyzeResult.content || '';
 
         // ============================================================
         // 7. STRATEGY ONE: AZURE KEY / VALUE PAIRS
@@ -344,31 +424,57 @@ module.exports = async function (context, req) {
         const keyValuePairs =
             analyzeResult.keyValuePairs || [];
 
-        for (const pair of keyValuePairs) {
+        for (
+            const pair
+            of keyValuePairs
+        ) {
             const keyText =
                 pair.key?.content || '';
 
             const valueText =
                 pair.value?.content || '';
 
-            if (!keyText || !valueText) {
+            if (
+                !keyText ||
+                !valueText
+            ) {
                 continue;
             }
 
             for (
                 const [field, aliases]
-                of Object.entries(fieldDefinitions)
+                of Object.entries(
+                    fieldDefinitions
+                )
             ) {
-                if (extracted[field]) {
+                if (
+                    extracted[field]
+                ) {
                     continue;
                 }
 
-                if (labelsMatch(keyText, aliases)) {
-                    const cleaned = cleanValue(valueText);
+                if (
+                    labelsMatch(
+                        keyText,
+                        aliases
+                    )
+                ) {
+                    const cleaned =
+                        cleanValue(
+                            valueText
+                        );
 
-                    if (isValidValue(field, cleaned)) {
-                        extracted[field] = cleaned;
-                        extractionSource[field] = 'azure-key-value';
+                    if (
+                        isValidValue(
+                            field,
+                            cleaned
+                        )
+                    ) {
+                        extracted[field] =
+                            cleaned;
+
+                        extractionSource[field] =
+                            'azure-key-value';
                     }
                 }
             }
@@ -382,10 +488,18 @@ module.exports = async function (context, req) {
 
         const lines = [];
 
-        for (const page of pages) {
-            for (const line of page.lines || []) {
+        for (
+            const page
+            of pages
+        ) {
+            for (
+                const line
+                of page.lines || []
+            ) {
                 const content =
-                    cleanValue(line.content);
+                    cleanValue(
+                        line.content
+                    );
 
                 if (!content) {
                     continue;
@@ -393,7 +507,8 @@ module.exports = async function (context, req) {
 
                 lines.push({
                     text: content,
-                    polygon: line.polygon || [],
+                    polygon:
+                        line.polygon || [],
                     pageNumber:
                         page.pageNumber || 1
                 });
@@ -408,25 +523,36 @@ module.exports = async function (context, req) {
             aliases
         ) {
             const original =
-                String(lineText).trim();
+                String(
+                    lineText
+                ).trim();
 
             const normalizedOriginal =
-                normalizeLabel(original);
+                normalizeLabel(
+                    original
+                );
 
             const sortedAliases =
                 [...aliases].sort(
                     (a, b) =>
-                        b.length - a.length
+                        b.length -
+                        a.length
                 );
 
-            for (const alias of sortedAliases) {
+            for (
+                const alias
+                of sortedAliases
+            ) {
                 const normalizedAlias =
-                    normalizeLabel(alias);
+                    normalizeLabel(
+                        alias
+                    );
 
                 if (
-                    !normalizedOriginal.startsWith(
-                        normalizedAlias
-                    )
+                    !normalizedOriginal
+                        .startsWith(
+                            normalizedAlias
+                        )
                 ) {
                     continue;
                 }
@@ -447,18 +573,27 @@ module.exports = async function (context, req) {
                     )
                 ];
 
-                for (const pattern of patterns) {
+                for (
+                    const pattern
+                    of patterns
+                ) {
                     const match =
-                        original.match(pattern);
+                        original.match(
+                            pattern
+                        );
 
                     if (
                         match &&
                         match[1]
                     ) {
                         const candidate =
-                            cleanValue(match[1]);
+                            cleanValue(
+                                match[1]
+                            );
 
-                        if (candidate) {
+                        if (
+                            candidate
+                        ) {
                             return candidate;
                         }
                     }
@@ -468,12 +603,19 @@ module.exports = async function (context, req) {
             return '';
         }
 
-        for (const line of lines) {
+        for (
+            const line
+            of lines
+        ) {
             for (
                 const [field, aliases]
-                of Object.entries(fieldDefinitions)
+                of Object.entries(
+                    fieldDefinitions
+                )
             ) {
-                if (extracted[field]) {
+                if (
+                    extracted[field]
+                ) {
                     continue;
                 }
 
@@ -502,7 +644,9 @@ module.exports = async function (context, req) {
         // ============================================================
         // 10. GEOMETRY FALLBACK
         // ============================================================
-        function boundingBox(polygon) {
+        function boundingBox(
+            polygon
+        ) {
             if (
                 !polygon ||
                 polygon.length < 4
@@ -514,17 +658,21 @@ module.exports = async function (context, req) {
             const ys = [];
 
             if (
-                typeof polygon[0] === 'number'
+                typeof polygon[0] ===
+                'number'
             ) {
                 for (
                     let i = 0;
                     i < polygon.length;
                     i += 2
                 ) {
-                    xs.push(polygon[i]);
+                    xs.push(
+                        polygon[i]
+                    );
 
                     if (
-                        polygon[i + 1] !== undefined
+                        polygon[i + 1] !==
+                        undefined
                     ) {
                         ys.push(
                             polygon[i + 1]
@@ -532,26 +680,46 @@ module.exports = async function (context, req) {
                     }
                 }
             } else {
-                for (const point of polygon) {
+                for (
+                    const point
+                    of polygon
+                ) {
                     if (
-                        point.x !== undefined &&
-                        point.y !== undefined
+                        point.x !==
+                        undefined &&
+                        point.y !==
+                        undefined
                     ) {
-                        xs.push(point.x);
-                        ys.push(point.y);
+                        xs.push(
+                            point.x
+                        );
+
+                        ys.push(
+                            point.y
+                        );
                     }
                 }
             }
 
-            if (!xs.length || !ys.length) {
+            if (
+                !xs.length ||
+                !ys.length
+            ) {
                 return null;
             }
 
             return {
-                left: Math.min(...xs),
-                right: Math.max(...xs),
-                top: Math.min(...ys),
-                bottom: Math.max(...ys),
+                left:
+                    Math.min(...xs),
+
+                right:
+                    Math.max(...xs),
+
+                top:
+                    Math.min(...ys),
+
+                bottom:
+                    Math.max(...ys),
 
                 centerX:
                     (
@@ -567,9 +735,13 @@ module.exports = async function (context, req) {
             };
         }
 
-        function looksLikeAnyLabel(text) {
+        function looksLikeAnyLabel(
+            text
+        ) {
             const normalized =
-                normalizeLabel(text);
+                normalizeLabel(
+                    text
+                );
 
             if (!normalized) {
                 return false;
@@ -579,17 +751,23 @@ module.exports = async function (context, req) {
                 fieldDefinitions
             )
                 .flat()
-                .some(alias => {
-                    const expected =
-                        normalizeLabel(alias);
+                .some(
+                    alias => {
+                        const expected =
+                            normalizeLabel(
+                                alias
+                            );
 
-                    return (
-                        normalized === expected ||
-                        normalized.startsWith(
-                            expected + ' '
-                        )
-                    );
-                });
+                        return (
+                            normalized ===
+                                expected ||
+                            normalized
+                                .startsWith(
+                                    expected + ' '
+                                )
+                        );
+                    }
+                );
         }
 
         function findValueBelowLabel(
@@ -607,8 +785,14 @@ module.exports = async function (context, req) {
 
             const candidates = [];
 
-            for (const candidate of lines) {
-                if (candidate === labelLine) {
+            for (
+                const candidate
+                of lines
+            ) {
+                if (
+                    candidate ===
+                    labelLine
+                ) {
                     continue;
                 }
 
@@ -632,7 +816,9 @@ module.exports = async function (context, req) {
                         candidate.polygon
                     );
 
-                if (!candidateBox) {
+                if (
+                    !candidateBox
+                ) {
                     continue;
                 }
 
@@ -719,7 +905,8 @@ module.exports = async function (context, req) {
                         verticalGap,
                         0
                     ) +
-                    horizontalDistance * 0.25;
+                    horizontalDistance *
+                    0.25;
 
                 candidates.push({
                     value,
@@ -729,21 +916,33 @@ module.exports = async function (context, req) {
 
             candidates.sort(
                 (a, b) =>
-                    a.score - b.score
+                    a.score -
+                    b.score
             );
 
-            return candidates[0]?.value || '';
+            return (
+                candidates[0]
+                    ?.value ||
+                ''
+            );
         }
 
         for (
             const [field, aliases]
-            of Object.entries(fieldDefinitions)
+            of Object.entries(
+                fieldDefinitions
+            )
         ) {
-            if (extracted[field]) {
+            if (
+                extracted[field]
+            ) {
                 continue;
             }
 
-            for (const line of lines) {
+            for (
+                const line
+                of lines
+            ) {
                 if (
                     !labelsMatch(
                         line.text,
@@ -779,13 +978,6 @@ module.exports = async function (context, req) {
 
         // ============================================================
         // 11. FREIGHT ITEMS ROW FALLBACK
-        //
-        // Azure raw OCR example:
-        //
-        // Item Type Quantity Weight (kg) Stillage 3 410
-        //
-        // If Azure sees the table but does not return key/value pairs,
-        // parse this known freight row conservatively.
         // ============================================================
         if (
             !extracted.itemType ||
@@ -794,7 +986,10 @@ module.exports = async function (context, req) {
         ) {
             const normalizedRaw =
                 rawText
-                    .replace(/\s+/g, ' ')
+                    .replace(
+                        /\s+/g,
+                        ' '
+                    )
                     .trim();
 
             const freightMatch =
@@ -802,15 +997,20 @@ module.exports = async function (context, req) {
                     /item\s*type\s+quantity\s+weight\s*\(?kg\)?\s+([a-z][a-z\s-]*?)\s+(\d+)\s+(\d+(?:\.\d+)?)(?=\s|$)/i
                 );
 
-            if (freightMatch) {
+            if (
+                freightMatch
+            ) {
                 const detectedItemType =
-                    freightMatch[1].trim();
+                    freightMatch[1]
+                        .trim();
 
                 const detectedQty =
-                    freightMatch[2].trim();
+                    freightMatch[2]
+                        .trim();
 
                 const detectedWeight =
-                    freightMatch[3].trim();
+                    freightMatch[3]
+                        .trim();
 
                 const allowedItemTypes = [
                     'Carton',
@@ -826,11 +1026,12 @@ module.exports = async function (context, req) {
                 ];
 
                 const matchedItemType =
-                    allowedItemTypes.find(
-                        type =>
-                            type.toLowerCase() ===
-                            detectedItemType.toLowerCase()
-                    );
+                    allowedItemTypes
+                        .find(
+                            type =>
+                                type.toLowerCase() ===
+                                detectedItemType.toLowerCase()
+                        );
 
                 if (
                     !extracted.itemType &&
@@ -845,7 +1046,9 @@ module.exports = async function (context, req) {
 
                 if (
                     !extracted.qty &&
-                    /^\d+$/.test(detectedQty)
+                    /^\d+$/.test(
+                        detectedQty
+                    )
                 ) {
                     extracted.qty =
                         detectedQty;
@@ -870,33 +1073,75 @@ module.exports = async function (context, req) {
         }
 
         // ============================================================
+        // 11b. PO NUMBER BUSINESS RULE
+        //
+        // Only recognise a PO if:
+        // - exactly 10 digits
+        // - starts with 450, 451 or 452
+        // ============================================================
+        if (
+            !extracted.po &&
+            typeof rawText === 'string'
+        ) {
+            const poMatch =
+                rawText.match(
+                    /\b(45[0-2]\d{7})\b/
+                );
+
+            if (
+                poMatch
+            ) {
+                extracted.po =
+                    poMatch[1];
+
+                extractionSource.po =
+                    'po-rule-45x';
+            }
+        }
+
+        // ============================================================
         // 12. FINAL FIELD CLEAN-UP
         // ============================================================
-
-        if (extracted.weight) {
+        if (
+            extracted.weight
+        ) {
             extracted.weight =
                 extracted.weight
-                    .replace(/\s*kg$/i, '')
+                    .replace(
+                        /\s*kg$/i,
+                        ''
+                    )
                     .trim();
         }
 
-        if (extracted.qty) {
+        if (
+            extracted.qty
+        ) {
             extracted.qty =
                 extracted.qty
-                    .replace(/,/g, '')
+                    .replace(
+                        /,/g,
+                        ''
+                    )
                     .trim();
         }
 
-        // Fix OCR spacing around hyphens
-        //
-        // REF-CARR- 1182 -> REF-CARR-1182
-        // RXL - 660421   -> RXL-660421
-
-        for (const field of ['reference', 'connote']) {
-            if (extracted[field]) {
+        for (
+            const field
+            of [
+                'reference',
+                'connote'
+            ]
+        ) {
+            if (
+                extracted[field]
+            ) {
                 extracted[field] =
                     extracted[field]
-                        .replace(/\s*-\s*/g, '-')
+                        .replace(
+                            /\s*-\s*/g,
+                            '-'
+                        )
                         .trim();
             }
         }
@@ -907,9 +1152,8 @@ module.exports = async function (context, req) {
         // NEVER GUESS.
         //
         // If OCR cannot confidently identify a field,
-        // leave it blank so the warehouse user can review/fill it.
+        // leave it blank.
         // ============================================================
-
         context.log(
             'ELX OCR extraction:',
             extracted
@@ -923,13 +1167,13 @@ module.exports = async function (context, req) {
         // ============================================================
         // 14. RETURN RESULT TO FRONT END
         // ============================================================
-
         context.res = {
             status: 200,
             headers: {
                 'Content-Type':
                     'application/json'
             },
+
             body: JSON.stringify({
                 success: true,
                 extracted,
@@ -950,6 +1194,7 @@ module.exports = async function (context, req) {
                 'Content-Type':
                     'application/json'
             },
+
             body: JSON.stringify({
                 success: false,
                 error:
