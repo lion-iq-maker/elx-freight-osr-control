@@ -1,3 +1,4 @@
+// ELX Freight Control — locations endpoint v1.0.1
 const sql = require('mssql');
 
 module.exports = async function (context, req) {
