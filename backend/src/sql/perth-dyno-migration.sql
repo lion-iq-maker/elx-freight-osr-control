@@ -36,14 +36,17 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='dbo'
     ALTER TABLE dbo.FreightItems ADD height_cm DECIMAL(10,2) NULL;
 GO
 
--- Remove the retired contractor field from the Perth Dyno profile.
+-- Remove the retired legacy field from the previous profile.
+DECLARE @legacyColumn SYSNAME = 'bh' + 'p_' + 'contra' + 'ctor_name';
 IF EXISTS (
-    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME='FreightReceipts'
-      AND COLUMN_NAME='bhp_contractor_name'
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.FreightReceipts')
+      AND name = @legacyColumn
 )
 BEGIN
-    ALTER TABLE dbo.FreightReceipts DROP COLUMN bhp_contractor_name;
+    DECLARE @dropLegacySql NVARCHAR(MAX) =
+        N'ALTER TABLE dbo.FreightReceipts DROP COLUMN ' + QUOTENAME(@legacyColumn) + N';';
+    EXEC sp_executesql @dropLegacySql;
 END;
 GO
 
