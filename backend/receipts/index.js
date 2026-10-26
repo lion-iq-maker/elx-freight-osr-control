@@ -511,7 +511,7 @@ async function handlePost(context, req, connectionString) {
                 .input('receivedAt', sql.DateTime2, now)
                 .query(`
                     INSERT INTO FreightReceipts (
-                        gr_number, supplier, delivery_site, bhp_contractor_name,
+                        gr_number, supplier, delivery_site,
                         po_number, other_reference, connote, notes, ocr_extraction,
                         label_photo, freight_photo,
                         current_status, current_location_id,
@@ -519,7 +519,7 @@ async function handlePost(context, req, connectionString) {
                     )
                     OUTPUT INSERTED.id
                     VALUES (
-                        @grNumber, @supplier, @site, @contractor,
+                        @grNumber, @supplier, @site,
                         @po, @reference, @connote, @notes, @ocrExtraction,
                         @labelPhoto, @freightPhoto,
                         @status, @locationId,
