@@ -36,8 +36,16 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='dbo'
     ALTER TABLE dbo.FreightItems ADD height_cm DECIMAL(10,2) NULL;
 GO
 
--- Keep the legacy bhp_contractor_name column for existing records/schema compatibility.
--- The Perth Dyno UI/backend no longer reads or writes it.
+-- Remove the retired contractor field from the Perth Dyno profile.
+IF EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME='FreightReceipts'
+      AND COLUMN_NAME='bhp_contractor_name'
+)
+BEGIN
+    ALTER TABLE dbo.FreightReceipts DROP COLUMN bhp_contractor_name;
+END;
+GO
 
 UPDATE dbo.Staff SET is_active = 0;
 UPDATE dbo.Locations SET is_active = 0;
