@@ -147,13 +147,7 @@ GO
 -- Seed initial locations
 MERGE INTO Locations AS target
 USING (VALUES
-    ('BHP Olympic Dam Cage', 'OD', 1),
-    ('BHP Carrapateena Cage', 'CAR', 2),
-    ('BHP Prominent Hill Cage', 'PH', 3),
-    ('Quarantine / Exception Area', 'QUAR', 4),
-    ('General Receiving Area', 'GR', 5),
-    ('Ready Dispatch Zone', 'RD', 6),
-    ('Loaded / Outbound Bay', 'OB', 7)
+    ('Perth Warehouse', 'PERTH', 1)
 ) AS source (name, code, sort_order)
 ON target.name = source.name
 WHEN MATCHED THEN
