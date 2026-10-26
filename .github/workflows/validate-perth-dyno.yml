@@ -1,0 +1,42 @@
+name: Validate Perth Dyno Branch
+
+on:
+  push:
+    branches:
+      - perth-dyno-profile
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Check backend JavaScript syntax
+        run: |
+          find backend -name "*.js" -type f -print0 | xargs -0 -n1 node --check
+
+      - name: Check frontend JavaScript syntax
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('index.html', 'utf8');
+          const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+            .map(m => m[1])
+            .filter(s => s.trim());
+          fs.writeFileSync('/tmp/elx-inline.js', scripts.join('\n'));
+          NODE
+          node --check /tmp/elx-inline.js
