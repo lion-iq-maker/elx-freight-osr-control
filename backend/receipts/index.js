@@ -49,7 +49,6 @@ async function handleGet(context, req, connectionString) {
                         r.gr_number AS grNumber,
                         r.supplier,
                         r.delivery_site AS site,
-                        r.bhp_contractor_name AS contractor,
                         r.po_number AS po,
                         r.other_reference AS reference,
                         r.connote,
@@ -495,7 +494,6 @@ async function handlePost(context, req, connectionString) {
                 .input('grNumber', sql.NVarChar, grNumber)
                 .input('supplier', sql.NVarChar, body.supplier)
                 .input('site', sql.NVarChar, body.site)
-                .input('contractor', sql.NVarChar, body.contractor || null)
                 .input('po', sql.NVarChar, body.po || null)
                 .input('reference', sql.NVarChar, body.reference || null)
                 .input('connote', sql.NVarChar, body.connote || null)
@@ -550,7 +548,7 @@ async function handlePost(context, req, connectionString) {
                 .input('userId', sql.Int, userId)
                 .input('displayName', sql.NVarChar, body.receivedBy)
                 .input('performedAt', sql.DateTime2, now)
-                .input('note', sql.NVarChar, 'Supplier freight received at ELX Largs North depot')
+                .input('note', sql.NVarChar, 'Supplier freight received at Perth Warehouse')
                 .query(`
                     INSERT INTO LifecycleEvents (
                         receipt_id, event_type,
