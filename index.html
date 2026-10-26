@@ -653,7 +653,7 @@
 
     function seedRecord(id,supplier,po,site,location,status,qty,weight,user) {
       const t = new Date(Date.now() - Math.floor(Math.random()*6)*3600000).toISOString();
-      return { id, supplier, po, site, location, status, receivedBy:user, reference:"", connote:"", contractor:"", items:[{type:"Pallet", qty, weight}], created:t, updated:t, notes:"", events:[{time:t, event:"Goods Received", user, location, status:"Goods Received", note:"Supplier freight received at Largs North depot"}] };
+      return { id, supplier, po, site, location, status, receivedBy:user, reference:"", connote:"", items:[{type:"Pallet", qty, weight, length:null, width:null, height:null}], created:t, updated:t, notes:"", events:[{time:t, event:"Goods Received", user, location, status:"Goods Received", note:"Supplier freight received at Largs North depot"}] };
     }
 
     const defaultState = {
@@ -679,7 +679,7 @@
     function showToast(message) { const t=$("toast"); t.textContent=message; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
 
     const titles = {
-      dashboard:["ELX Freight Control","BHP freight visibility from supplier receipt to site delivery and invoice readiness."],
+      dashboard:["ELX Freight Control","Perth Dyno freight visibility from supplier receipt to site delivery and invoice readiness."],
       receive:["Goods Received","Supplier driver handover with manual entry or OCR-assisted label capture."],
       tracking:["Freight Tracking","Search and move freight through the complete ELX lifecycle."],
       locations:["Locations / Cages","Physical freight visibility across receiving locations and dispatch zones."],
@@ -1407,7 +1407,6 @@
 
         $("ocrSupplier").value = extracted.supplier || "";
         $("ocrPo").value = extracted.po || "";
-        $("ocrContractor").value = extracted.contractor || "";
         $("ocrConnote").value = extracted.connote || "";
         $("ocrReference").value = extracted.reference || "";
         $("ocrQty").value = extracted.qty || "";
