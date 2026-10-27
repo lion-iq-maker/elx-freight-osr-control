@@ -395,7 +395,7 @@
         <div class="view active" id="view-dashboard">
           <div class="panel fill">
             <div class="panel-head">
-              <div><h3>Freight Lifecycle Board</h3><p>Goods Received → Location Assigned → SAP Validated → Ready for Dispatch → Dispatched.</p></div>
+              <div><h3>Freight Lifecycle Board</h3><p>Goods Received → Location Assigned → Ready for Dispatch → Dispatched.</p></div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                 <label style="font-size:11px;font-weight:850;color:var(--muted);">From:</label>
                 <input type="date" id="dashboardDateFrom" style="padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;">
@@ -594,7 +594,7 @@
     </div>
   </div>
 
-  <div class="modal-backdrop" id="moveModal"><div class="modal" style="width:min(720px,100%);"><div class="modal-head"><div><h3>Update Freight Lifecycle</h3><p id="moveTitle" style="margin:4px 0 0;color:#64748b;font-size:13px;"></p></div><button class="close" id="closeMoveModal">×</button></div><div class="modal-body" style="grid-template-columns:1fr;"><div class="field-grid"><div class="field"><label>Workflow Status</label><select id="moveStatus"></select></div><div class="field"><label>Location / Cage</label><select id="moveLocation"></select></div><div class="field"><label>Updated By</label><select id="moveUser"></select></div><div class="field"><label>Movement Note</label><input id="moveNote" placeholder="e.g. SAP validated by warehouse staff"></div></div></div><div class="modal-actions"><button class="btn btn-light" id="cancelMoveBtn">Cancel</button><button class="btn btn-primary" id="saveMoveBtn">Save Update</button></div></div></div>
+  <div class="modal-backdrop" id="moveModal"><div class="modal" style="width:min(720px,100%);"><div class="modal-head"><div><h3>Update Freight Lifecycle</h3><p id="moveTitle" style="margin:4px 0 0;color:#64748b;font-size:13px;"></p></div><button class="close" id="closeMoveModal">×</button></div><div class="modal-body" style="grid-template-columns:1fr;"><div class="field-grid"><div class="field"><label>Workflow Status</label><select id="moveStatus"></select></div><div class="field"><label>Location / Cage</label><select id="moveLocation"></select></div><div class="field"><label>Updated By</label><select id="moveUser"></select></div><div class="field"><label>Movement Note</label><input id="moveNote" placeholder="e.g. freight cleared for dispatch"></div></div></div><div class="modal-actions"><button class="btn btn-light" id="cancelMoveBtn">Cancel</button><button class="btn btn-primary" id="saveMoveBtn">Save Update</button></div></div></div>
 
   <div class="modal-backdrop" id="receiptModal">
     <div class="modal" style="width:min(920px,100%);">
@@ -644,7 +644,7 @@
   <script>
     const API_BASE = 'https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net/api';
 
-    const STATUS = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched","Delivered","Ready to Invoice","Rejected"];
+    const STATUS = ["Goods Received","Location Assigned","Ready for Dispatch","Dispatched","Delivered","Ready to Invoice","Rejected"];
     const DEFAULT_STAFF = ["Jacob Scammell","Stephanie Ford","Jose Diaz","Kathy Pearce"];
     const DEFAULT_LOCATIONS = ["Perth Warehouse"];
     const DEFAULT_SITES = ["Christmas Creek","Solomon","Cloudbreak"];
@@ -681,7 +681,7 @@
     function totalQty(r) { return r.items.reduce((a,i)=>a+(Number(i.qty)||0),0); }
     function totalWeight(r) { return r.items.reduce((a,i)=>a+(Number(i.weight)||0),0); }
     function fmt(v) { return new Date(v).toLocaleString([],{day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"}); }
-    function tone(status) { return {"Goods Received":"blue","Location Assigned":"purple","SAP Validated":"amber","Ready for Dispatch":"green","Dispatched":"grey","Delivered":"green","Ready to Invoice":"purple","Rejected":"red"}[status] || "grey"; }
+    function tone(status) { return {"Goods Received":"blue","Location Assigned":"purple","Ready for Dispatch":"green","Dispatched":"grey","Delivered":"green","Ready to Invoice":"purple","Rejected":"red"}[status] || "grey"; }
     function showToast(message) { const t=$("toast"); t.textContent=message; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
 
     const titles = {
@@ -747,7 +747,7 @@
             const statusCounts = {};
             STATUS.forEach(s => statusCounts[s] = 0);
             const boardMaps = {};
-            ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"].forEach(status => {
+            ["Goods Received","Location Assigned","Ready for Dispatch","Dispatched"].forEach(status => {
                 boardMaps[status] = new Map();
             });
             dailyResults.forEach(data => {
@@ -785,7 +785,6 @@
         const cards = [
             ["Goods Received", counts["Goods Received"] || 0, "New depot receipts", "blue"],
             ["Location Assigned", counts["Location Assigned"] || 0, "Allocated to cage / zone", "purple"],
-            ["SAP Validated", counts["SAP Validated"] || 0, "SAP processing confirmed", "amber"],
             ["Ready Dispatch", counts["Ready for Dispatch"] || 0, "Cleared for outbound", "green"],
             ["Dispatched", counts["Dispatched"] || 0, "Left ELX depot", "dark"],
             ["Delivered", counts["Delivered"] || 0, "Site delivery completed", "green"],
@@ -810,7 +809,7 @@
 
     function renderBoard(boardData) {
         if (!boardData) {
-            const lanes = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
+            const lanes = ["Goods Received","Location Assigned","Ready for Dispatch","Dispatched"];
             $("workloadBoard").innerHTML = lanes.map(s => {
                 const rows = state.records.filter(r => r.status === s);
                 return `<div class="lane"><div class="lane-head"><div class="lane-title">${s}</div><div class="lane-count">${rows.length}</div></div><div class="lane-cards">${rows.map(boardCardHtml).join("")}</div></div>`;
@@ -818,7 +817,7 @@
             document.querySelectorAll("#workloadBoard .item-card").forEach(c => c.onclick = () => openMove(c.dataset.id));
             return;
         }
-        const lanes = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched"];
+        const lanes = ["Goods Received","Location Assigned","Ready for Dispatch","Dispatched"];
         $("workloadBoard").innerHTML = lanes.map(status => {
             const lane = boardData.find(b => b.status === status);
             const receipts = lane ? lane.receipts : [];
