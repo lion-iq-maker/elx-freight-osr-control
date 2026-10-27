@@ -197,6 +197,30 @@ module.exports = async function (context, req) {
                 'gross weight',
                 'gross weight kg',
                 'total weight'
+            ],
+
+            length: [
+                'length',
+                'length cm',
+                'length (cm)',
+                'l cm',
+                'l (cm)'
+            ],
+
+            width: [
+                'width',
+                'width cm',
+                'width (cm)',
+                'w cm',
+                'w (cm)'
+            ],
+
+            height: [
+                'height',
+                'height cm',
+                'height (cm)',
+                'h cm',
+                'h (cm)'
             ]
         };
 
@@ -300,6 +324,16 @@ module.exports = async function (context, req) {
                 );
             }
 
+            if (
+                field === 'length' ||
+                field === 'width' ||
+                field === 'height'
+            ) {
+                return /^\d[\d,.]*(\s*cm)?$/i.test(
+                    cleaned
+                );
+            }
+
             // --------------------------------------------------------
             // ELX PO RULE
             //
@@ -391,7 +425,10 @@ module.exports = async function (context, req) {
             connote: '',
             itemType: '',
             qty: '',
-            weight: ''
+            weight: '',
+            length: '',
+            width: '',
+            height: ''
         };
 
         const extractionSource = {
@@ -402,7 +439,10 @@ module.exports = async function (context, req) {
             connote: '',
             itemType: '',
             qty: '',
-            weight: ''
+            weight: '',
+            length: '',
+            width: '',
+            height: ''
         };
 
         const rawText =
@@ -1061,6 +1101,57 @@ module.exports = async function (context, req) {
                 }
             }
         }
+        // ============================================================
+        // 11a. DIMENSION RAW-TEXT FALLBACK
+        // ============================================================
+        if (
+            !extracted.length ||
+            !extracted.width ||
+            !extracted.height
+        ) {
+            const normalizedRaw =
+                rawText
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+            const labelledDims =
+                normalizedRaw.match(
+                    /(?:length|l)\s*(?:\(?cm\)?)?\s*[:=]?\s*(\d+(?:\.\d+)?)\D{0,30}(?:width|w)\s*(?:\(?cm\)?)?\s*[:=]?\s*(\d+(?:\.\d+)?)\D{0,30}(?:height|h)\s*(?:\(?cm\)?)?\s*[:=]?\s*(\d+(?:\.\d+)?)/i
+                );
+
+            const tableDims =
+                normalizedRaw.match(
+                    /(?:l(?:ength)?\s*\(?cm\)?)[\s:|,-]+(?:w(?:idth)?\s*\(?cm\)?)[\s:|,-]+(?:h(?:eight)?\s*\(?cm\)?)[\s:|,-]+(\d+(?:\.\d+)?)[\s|,-]+(\d+(?:\.\d+)?)[\s|,-]+(\d+(?:\.\d+)?)/i
+                );
+
+            const xDims =
+                normalizedRaw.match(
+                    /\b(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*cm\b/i
+                );
+
+            const dimsMatch =
+                labelledDims ||
+                tableDims ||
+                xDims;
+
+            if (dimsMatch) {
+                const values = [
+                    dimsMatch[1],
+                    dimsMatch[2],
+                    dimsMatch[3]
+                ];
+
+                ['length','width','height']
+                    .forEach((field, index) => {
+                        if (!extracted[field]) {
+                            extracted[field] = values[index];
+                            extractionSource[field] = 'dimension-fallback';
+                        }
+                    });
+            }
+        }
+
+
 
         // ============================================================
         // 11b. PO NUMBER BUSINESS RULE
@@ -1114,6 +1205,25 @@ module.exports = async function (context, req) {
                         ''
                     )
                     .trim();
+        }
+
+        for (
+            const field
+            of [
+                'length',
+                'width',
+                'height'
+            ]
+        ) {
+            if (
+                extracted[field]
+            ) {
+                extracted[field] =
+                    extracted[field]
+                        .replace(/\s*cm$/i, '')
+                        .replace(/,/g, '')
+                        .trim();
+            }
         }
 
         for (

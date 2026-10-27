@@ -72,11 +72,26 @@ async function handleGet(context, req, connectionString) {
                             WHERE fi.receipt_id = r.id
                         ) AS totalQty,
                         (
-                            SELECT SUM(weight_kg)
-                            FROM FreightItems fi
-                            WHERE fi.receipt_id = r.id
-                        ) AS totalWeight
-                    FROM FreightReceipts r
+                    SELECT SUM(weight_kg)
+                    FROM FreightItems fi
+                    WHERE fi.receipt_id = r.id
+                ) AS totalWeight,
+                (
+                    SELECT STRING_AGG(COALESCE(CONVERT(VARCHAR(32), length_cm), '-'), ', ')
+                    FROM FreightItems fi
+                    WHERE fi.receipt_id = r.id
+                ) AS lengthSummary,
+                (
+                    SELECT STRING_AGG(COALESCE(CONVERT(VARCHAR(32), width_cm), '-'), ', ')
+                    FROM FreightItems fi
+                    WHERE fi.receipt_id = r.id
+                ) AS widthSummary,
+                (
+                    SELECT STRING_AGG(COALESCE(CONVERT(VARCHAR(32), height_cm), '-'), ', ')
+                    FROM FreightItems fi
+                    WHERE fi.receipt_id = r.id
+                ) AS heightSummary
+            FROM FreightReceipts r
                     LEFT JOIN Locations l ON r.current_location_id = l.id
                     WHERE r.gr_number = @grNumber
                 `);
@@ -161,6 +176,7 @@ async function handleGet(context, req, connectionString) {
                 r.current_status AS status,
                 l.name AS location,
                 r.received_by_display_name AS receivedBy,
+                r.received_at_utc AS receivedAt,
                 r.updated_at_utc AS updatedAt,
                 (
                     SELECT STRING_AGG(CONCAT(item_type, ' x', quantity), ', ')
