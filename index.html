@@ -618,11 +618,11 @@
       <div class="modal-head"><div><h3>Goods Received Receipt</h3><p style="margin:4px 0 0;color:#64748b;font-size:13px;">Supplier POD · QR receipt generated after confirmation.</p></div><button class="close" id="closeReceiptModal">×</button></div>
       <div class="receipt-modal-body">
         <div>
-          <div class="receipt-success"><h4>✓ Goods Received Confirmed</h4><p>Energy LogistiX has received the freight at 7 Creswell Rd, Largs North SA 5016.</p></div>
+          <div class="receipt-success"><h4>✓ Goods Received Confirmed</h4><p>Energy LogistiX has received the freight at Perth Warehouse.</p></div>
           <div class="receipt-ref"><small>ELX Goods Received Reference</small><strong id="receiptGrNumber">-</strong></div>
           <div class="detail-box" style="margin-top:12px;">
             <div class="field-grid"><div class="field"><label>Supplier</label><input id="receiptSupplier" readonly></div><div class="field"><label>Destination</label><input id="receiptSite" readonly></div><div class="field"><label>Received By</label><input id="receiptReceivedBy" readonly></div><div class="field"><label>Received At</label><input id="receiptDateTime" readonly></div></div>
-            <table class="receipt-table"><thead><tr><th>Item</th><th>Qty</th><th>Weight</th></tr></thead><tbody id="receiptItemsBody"></tbody></table>
+            <table class="receipt-table"><thead><tr><th>Item</th><th>Qty</th><th>Weight / Dimensions</th></tr></thead><tbody id="receiptItemsBody"></tbody></table>
           </div>
         </div>
         <div class="qr-panel">
@@ -676,7 +676,7 @@
 
     function seedRecord(id,supplier,po,site,location,status,qty,weight,user) {
       const t = new Date(Date.now() - Math.floor(Math.random()*6)*3600000).toISOString();
-      return { id, supplier, po, site, location, status, receivedBy:user, reference:"", connote:"", items:[{type:"Pallet", qty, weight, length:null, width:null, height:null}], created:t, updated:t, notes:"", events:[{time:t, event:"Goods Received", user, location, status:"Goods Received", note:"Supplier freight received at Largs North depot"}] };
+      return { id, supplier, po, site, location, status, receivedBy:user, reference:"", connote:"", items:[{type:"Pallet", qty, weight, length:null, width:null, height:null}], created:t, updated:t, notes:"", events:[{time:t, event:"Goods Received", user, location, status:"Goods Received", note:"Supplier freight received at Perth Warehouse"}] };
     }
 
     const defaultState = {
@@ -1834,7 +1834,7 @@
 
     function openReceiptPage(record, url) {
       const items = (record.items||[]).map(i => `<tr><td>${esc(i.type)}</td><td>${Number(i.qty)||0}</td><td>${Number(i.weight)||0} kg</td></tr>`).join("");
-      const receiptHtml = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${record.id} Receipt</title><style>body{font-family:Segoe UI,Arial,sans-serif;background:#f4f6f8;margin:0;padding:24px;color:#101827}.card{max-width:760px;margin:auto;background:white;border-radius:20px;padding:24px;box-shadow:0 16px 44px rgba(0,0,0,.08)}.brand{font-weight:900;font-size:22px}.brand span{color:#d71920}.ok{margin:18px 0;padding:14px;border-radius:14px;background:#ecfdf5;color:#047857;font-weight:800}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left}th{background:#f8fafc;font-size:12px;text-transform:uppercase;color:#64748b}.meta{color:#64748b;font-size:13px;line-height:1.6}.ref{font-size:24px;font-weight:900;margin:8px 0 16px}.footer{margin-top:22px;color:#64748b;font-size:12px}</style></head><body><div class="card"><div class="brand">Energy <span>LogistiX</span></div><div class="ok">✓ Goods received by Energy LogistiX</div><div class="meta">ELX Reference</div><div class="ref">${record.id}</div><div class="meta">Received: ${new Date(record.created).toLocaleString()}<br>Received at: 7 Creswell Rd, Largs North SA 5016<br>Supplier: ${esc(record.supplier)}<br>Destination: ${esc(record.site)}<br>Received by: ${esc(record.receivedBy)}</div><table><thead><tr><th>Item</th><th>Qty</th><th>Weight</th></tr></thead><tbody>${items}</tbody></table><div class="footer">Supplier Proof of Delivery / Goods Received receipt.</div></div></body></html>`;
+      const receiptHtml = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${record.id} Receipt</title><style>body{font-family:Segoe UI,Arial,sans-serif;background:#f4f6f8;margin:0;padding:24px;color:#101827}.card{max-width:760px;margin:auto;background:white;border-radius:20px;padding:24px;box-shadow:0 16px 44px rgba(0,0,0,.08)}.brand{font-weight:900;font-size:22px}.brand span{color:#d71920}.ok{margin:18px 0;padding:14px;border-radius:14px;background:#ecfdf5;color:#047857;font-weight:800}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left}th{background:#f8fafc;font-size:12px;text-transform:uppercase;color:#64748b}.meta{color:#64748b;font-size:13px;line-height:1.6}.ref{font-size:24px;font-weight:900;margin:8px 0 16px}.footer{margin-top:22px;color:#64748b;font-size:12px}</style></head><body><div class="card"><div class="brand">Energy <span>LogistiX</span></div><div class="ok">✓ Goods received by Energy LogistiX</div><div class="meta">ELX Reference</div><div class="ref">${record.id}</div><div class="meta">Received: ${new Date(record.created).toLocaleString()}<br>Received at: Perth Warehouse<br>Supplier: ${esc(record.supplier)}<br>Destination: ${esc(record.site)}<br>Received by: ${esc(record.receivedBy)}</div><table><thead><tr><th>Item</th><th>Qty</th><th>Weight</th></tr></thead><tbody>${items}</tbody></table><div class="footer">Supplier Proof of Delivery / Goods Received receipt.</div></div></body></html>`;
       const w = window.open("", "_blank");
       if (!w) { showToast("Pop-up blocked — allow pop-ups to preview receipt"); return; }
       w.document.open();
