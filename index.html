@@ -501,6 +501,9 @@
                       <th>Items</th>
                       <th>Total Qty</th>
                       <th>Total Weight</th>
+                      <th>L (cm)</th>
+                      <th>W (cm)</th>
+                      <th>H (cm)</th>
                       <th>Location</th>
                       <th>Status</th>
                       <th>Updated</th>
@@ -527,7 +530,7 @@
         </div>
         <div class="view" id="view-reports">
           <div class="panel fill">
-            <div class="panel-head"><div><h3>Reports & Invoice Readiness</h3><p>Live operational summary from the freight lifecycle dataset.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-light" id="exportReportPdf">Print / Save PDF</button><button class="btn btn-primary" id="exportReportExcel">Export Excel</button></div></div>
+            <div class="panel-head"><div><h3>Perth Dyno Freight Report</h3><p>Operational freight report with item dimensions and current status.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-light" id="exportReportPdf">ELX PDF Report</button><button class="btn btn-primary" id="exportReportExcel">ELX Excel Report</button></div></div>
             <div class="search-row">
               <label style="font-size:11px;font-weight:850;color:var(--muted);">From:</label><input type="date" id="reportDateFrom">
               <label style="font-size:11px;font-weight:850;color:var(--muted);">To:</label><input type="date" id="reportDateTo">
@@ -535,7 +538,7 @@
               <select id="reportStatusFilter" class="status-select"></select>
               <button class="btn btn-light" id="reportApplyBtn">Apply</button>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>Site</th><th>GR Records</th><th>Total Qty</th><th>Total Weight</th><th>Dispatched+</th><th>Ready to Invoice</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
+            <div class="table-wrap"><table style="min-width:1500px;"><thead><tr><th>ELX GR</th><th>Date</th><th>Supplier</th><th>PO</th><th>Delivery Site</th><th>Items</th><th>Total Qty</th><th>Total Weight</th><th>L (cm)</th><th>W (cm)</th><th>H (cm)</th><th>Location</th><th>Status</th><th>Received By</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
           </div>
         </div>
         <div class="view" id="view-settings">
@@ -570,11 +573,14 @@
             <div class="field"><label>Other Reference(s)</label><input id="ocrReference" placeholder="Extracted reference"></div>
             <div class="field"><label>Connote / Consignment</label><input id="ocrConnote" placeholder="Extracted connote"></div>
           </div>
-          <div style="margin-top:12px;font-weight:900;font-size:12px;">Freight Item (OCR will fill Quantity)</div>
-          <div class="field-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+          <div style="margin-top:12px;font-weight:900;font-size:12px;">Freight Item (OCR extraction + human review)</div>
+          <div class="field-grid" style="grid-template-columns: repeat(3, 1fr);">
             <div class="field"><label>Item Type</label><select id="ocrItemType"><option value="">Select type</option><option>Carton</option><option>Satchel</option><option>Pallet</option><option>Crate</option><option>Basket</option><option>Parcel</option><option>Stillage</option><option>IBC</option><option>Loose Freight</option><option>Other</option></select></div>
             <div class="field"><label>Quantity</label><input id="ocrQty" placeholder="Extracted quantity"></div>
             <div class="field"><label>Weight (kg)</label><input id="ocrWeight" placeholder="Extracted weight"></div>
+            <div class="field"><label>L (cm)</label><input id="ocrLength" placeholder="Extracted length"></div>
+            <div class="field"><label>W (cm)</label><input id="ocrWidth" placeholder="Extracted width"></div>
+            <div class="field"><label>H (cm)</label><input id="ocrHeight" placeholder="Extracted height"></div>
           </div>
           <div class="confidence">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;"><strong>OCR Status</strong><span class="badge grey" id="ocrBadge">Waiting for image</span></div>
@@ -845,7 +851,7 @@
         const dates = getInclusiveDates(from, to);
         if (!dates) return;
 
-        document.getElementById('trackingBody').innerHTML = '<tr><td colspan="11">Loading...</td></tr>';
+        document.getElementById('trackingBody').innerHTML = '<tr><td colspan="14">Loading...</td></tr>';
 
         try {
             const dailyResults = await Promise.all(
@@ -889,6 +895,9 @@
                         <td>${esc(itemsSummary)}</td>
                         <td>${totalQty}</td>
                         <td>${totalWeight} kg</td>
+                        <td>${esc(r.lengthSummary || '-')}</td>
+                        <td>${esc(r.widthSummary || '-')}</td>
+                        <td>${esc(r.heightSummary || '-')}</td>
                         <td>${esc(r.location || '-')}</td>
                         <td><span class="badge ${tone(r.status)}">${esc(r.status)}</span></td>
                         <td>${fmt(r.updatedAt)}</td>
@@ -900,13 +909,13 @@
                 `;
             });
 
-            document.getElementById('trackingBody').innerHTML = html || '<tr><td colspan="11">No records found.</td></tr>';
+            document.getElementById('trackingBody').innerHTML = html || '<tr><td colspan="14">No records found.</td></tr>';
             document.querySelectorAll('.updateBtn').forEach(b => b.onclick = () => openMove(b.dataset.id));
             document.querySelectorAll('.viewGrBtn').forEach(b => b.onclick = () => showGrDetail(b.dataset.id));
 
         } catch (err) {
             console.error('Tracking error:', err);
-            document.getElementById('trackingBody').innerHTML = '<tr><td colspan="11">Error loading data. Please try again.</td></tr>';
+            document.getElementById('trackingBody').innerHTML = '<tr><td colspan="14">Error loading data. Please try again.</td></tr>';
         }
     }
 
@@ -1071,6 +1080,32 @@
 
     let currentReportRecords = [];
 
+    function reportDate(value) {
+      if (!value) return "";
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return String(value);
+      return d.toLocaleDateString("en-AU");
+    }
+
+    function reportRowValues(r) {
+      return [
+        r.grNumber || "",
+        reportDate(r.receivedAt || r.updatedAt),
+        r.supplier || "",
+        r.po || "",
+        r.site || "",
+        r.itemsSummary || "",
+        r.totalQty ?? "",
+        r.totalWeight ?? "",
+        r.lengthSummary || "",
+        r.widthSummary || "",
+        r.heightSummary || "",
+        r.location || "",
+        r.status || "",
+        r.receivedBy || ""
+      ];
+    }
+
     async function renderReports() {
       const from = $("reportDateFrom")?.value || getLocalToday();
       const to = $("reportDateTo")?.value || from;
@@ -1080,50 +1115,132 @@
       try {
         const batches = await Promise.all(dates.map(async date => {
           const res = await fetch(`${API_BASE}/receipts?date=${encodeURIComponent(date)}&page=1&pageSize=500`);
-          if (!res.ok) throw new Error('Failed to load report data');
+          if (!res.ok) throw new Error("Failed to load report data");
           const data = await res.json();
           return data.records || [];
         }));
 
         let rows = batches.flat();
+        const recordMap = new Map();
+        rows.forEach(r => recordMap.set(r.grNumber, r));
+        rows = [...recordMap.values()];
+
         const siteFilter = $("reportSiteFilter")?.value.trim() || "";
         const statusFilter = $("reportStatusFilter")?.value || "";
         if (siteFilter) rows = rows.filter(r => r.site === siteFilter);
         if (statusFilter) rows = rows.filter(r => r.status === statusFilter);
+
+        rows.sort((a,b) => new Date(b.receivedAt || b.updatedAt || 0) - new Date(a.receivedAt || a.updatedAt || 0));
         currentReportRecords = rows;
 
-        const sites = [...new Set(rows.map(r => r.site).filter(Boolean))].sort();
-        $("reportsBody").innerHTML = sites.length ? sites.map(site => {
-          const rs = rows.filter(r => r.site === site);
-          return `<tr><td><strong>${esc(site)}</strong></td><td>${rs.length}</td><td>${rs.reduce((a,r)=>a+(Number(r.totalQty)||0),0)}</td><td>${Math.round(rs.reduce((a,r)=>a+(Number(r.totalWeight)||0),0))} kg</td><td>${rs.filter(r=>STATUS.indexOf(r.status)>=4 && r.status!=="Rejected").length}</td><td>${rs.filter(r=>r.status==="Ready to Invoice").length}</td></tr>`;
-        }).join("") : '<tr><td colspan="6">No records for the selected filters.</td></tr>';
+        $("reportsBody").innerHTML = rows.length
+          ? rows.map(r => "<tr>" + reportRowValues(r).map(v => "<td>"+esc(v ?? "")+"</td>").join("") + "</tr>").join("")
+          : '<tr><td colspan="14">No records for the selected filters.</td></tr>';
       } catch (err) {
-        console.error('Report error:', err);
-        $("reportsBody").innerHTML = '<tr><td colspan="6">Unable to load report data.</td></tr>';
+        console.error("Report error:", err);
+        currentReportRecords = [];
+        $("reportsBody").innerHTML = '<tr><td colspan="14">Unable to load report data.</td></tr>';
       }
     }
 
+    function reportBrandHeader(title, subtitle) {
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:2px solid #e31b23;margin-bottom:18px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:62px;height:62px;border:3px solid #e31b23;border-radius:12px;display:grid;place-items:center;color:#e31b23;font-size:22px;font-weight:950;letter-spacing:-1px;">ELX</div>
+            <div>
+              <div style="font-size:24px;font-weight:900;color:#111827;letter-spacing:-.03em;">Energy LogistiX</div>
+              <div style="font-size:9px;color:#64748b;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">Supply Chain Partners</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:17px;font-weight:900;color:#111827;text-transform:uppercase;">${esc(title)}</div>
+            <div style="font-size:22px;font-weight:900;color:#e31b23;margin-top:3px;">PERTH DYNO</div>
+            <div style="font-size:10px;color:#64748b;margin-top:4px;">${esc(subtitle)}</div>
+          </div>
+        </div>`;
+    }
+
     function exportReportExcel() {
-      const headers = ["ELX GR","Supplier","PO","Delivery Site","Items","Total Qty","Total Weight","Location","Status","Received By","Updated"];
-      const rows = currentReportRecords.map(r => [r.grNumber,r.supplier,r.po,r.site,r.itemsSummary,r.totalQty,r.totalWeight,r.location,r.status,r.receivedBy,r.updatedAt]);
-      const html = '<table><tr>' + headers.map(h=>'<th>'+esc(h)+'</th>').join('') + '</tr>' +
-        rows.map(row=>'<tr>'+row.map(v=>'<td>'+esc(v ?? '')+'</td>').join('')+'</tr>').join('') + '</table>';
-      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-      const a = document.createElement('a');
+      if (!currentReportRecords.length) return showToast("No report rows to export");
+
+      const headers = ["ELX GR","Date","Supplier","PO","Delivery Site","Items","Total Qty","Total Weight (kg)","Length (cm)","Width (cm)","Height (cm)","Location","Status","Received By"];
+      const rows = currentReportRecords.map(reportRowValues);
+
+      const html = `<!doctype html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><style>
+        body{font-family:Arial,sans-serif;color:#111827}
+        table{border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt}
+        th{background:#e31b23;color:#fff;font-weight:bold;padding:8px;border-bottom:2px solid #111827;white-space:nowrap}
+        td{padding:7px 8px;border-bottom:1px solid #dfe3e8;white-space:nowrap}
+        .title{font-size:20pt;font-weight:bold;color:#111827}
+        .accent{font-size:16pt;font-weight:bold;color:#e31b23}
+        .sub{font-size:9pt;color:#64748b}
+      </style></head><body><table>
+        <tr><td colspan="14" class="title">Energy LogistiX | Supply Chain Partners</td></tr>
+        <tr><td colspan="14" class="accent">PERTH DYNO FREIGHT REPORT</td></tr>
+        <tr><td colspan="14" class="sub">Generated ${esc(new Date().toLocaleString("en-AU"))} | ${esc($("reportDateFrom").value)} to ${esc($("reportDateTo").value)}</td></tr>
+        <tr>${headers.map(h=>"<th>"+esc(h)+"</th>").join("")}</tr>
+        ${rows.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v ?? "")+"</td>").join("")+"</tr>").join("")}
+        <tr><td colspan="14" class="sub">Energy LogistiX | Supply Chain Partners</td></tr>
+      </table></body></html>`;
+
+      const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
+      const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `Perth-Dyno-Freight-Report-${$("reportDateFrom").value}-to-${$("reportDateTo").value}.xls`;
+      a.download = `ELX-Perth-Dyno-Freight-Report-${$("reportDateFrom").value}-to-${$("reportDateTo").value}.xls`;
       a.click();
       URL.revokeObjectURL(a.href);
     }
 
     function exportReportPdf() {
-      const table = document.querySelector('#view-reports .table-wrap')?.innerHTML || '';
-      const w = window.open('', '_blank');
-      if (!w) return showToast('Allow pop-ups to print the report');
-      w.document.write(`<html><head><title>Perth Dyno Freight Report</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}h2{margin-bottom:4px}p{color:#64748b}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left;font-size:12px}th{font-weight:700}</style></head><body><h2>Perth Dyno Freight Report</h2><p>${esc($("reportDateFrom").value)} to ${esc($("reportDateTo").value)}</p>${table}</body></html>`);
+      if (!currentReportRecords.length) return showToast("No report rows to export");
+
+      const headers = ["ELX GR","Date","Supplier","PO","Delivery Site","Items","Qty","Weight","L","W","H","Location","Status","Received By"];
+      const rows = currentReportRecords.map(reportRowValues);
+      const table = '<table><thead><tr>'+headers.map(h=>"<th>"+esc(h)+"</th>").join("")+'</tr></thead><tbody>'+
+        rows.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v ?? "")+"</td>").join("")+"</tr>").join("")+
+        "</tbody></table>";
+
+      const w = window.open("", "_blank");
+      if (!w) return showToast("Allow pop-ups to print the report");
+
+      const css = `
+        @page{size:A3 landscape;margin:12mm}
+        *{box-sizing:border-box}
+        body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:0;background:#fff}
+        .wrap{padding:2px}
+        .meta{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #d9dee5;border-radius:12px;overflow:hidden;margin:12px 0 20px}
+        .meta div{padding:10px 12px;border-right:1px solid #d9dee5}
+        .meta div:last-child{border-right:0}
+        .meta small{display:block;color:#64748b;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+        .meta strong{display:block;margin-top:4px;font-size:11px}
+        h2{font-size:15px;margin:0 0 9px;text-transform:uppercase}
+        table{width:100%;border-collapse:collapse}
+        th{background:#e31b23;color:#fff;padding:7px 5px;font-size:7px;text-transform:uppercase;text-align:left;white-space:nowrap}
+        td{padding:6px 5px;font-size:7px;border-bottom:1px solid #dfe3e8;vertical-align:top}
+        tbody tr:nth-child(even){background:#fafbfc}
+        .footer{margin-top:18px;border-top:1px solid #d9dee5;padding-top:9px;display:flex;justify-content:space-between;font-size:8px;color:#64748b}
+      `;
+
+      const subtitle = `Generated ${new Date().toLocaleString("en-AU")}`;
+      const header = reportBrandHeader("OFFICIAL FREIGHT REPORT", subtitle);
+      const from = $("reportDateFrom").value;
+      const to = $("reportDateTo").value;
+
+      w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>ELX Perth Dyno Freight Report</title><style>${css}</style></head><body><div class="wrap">${header}
+        <div class="meta">
+          <div><small>Report Period</small><strong>${esc(from)} to ${esc(to)}</strong></div>
+          <div><small>Records</small><strong>${rows.length}</strong></div>
+          <div><small>Profile</small><strong>Perth Dyno Freight</strong></div>
+          <div><small>Generated</small><strong>${esc(new Date().toLocaleString("en-AU"))}</strong></div>
+        </div>
+        <h2>Freight Manifest</h2>
+        ${table}
+        <div class="footer"><span>Energy LogistiX | Supply Chain Partners</span><span>Perth Dyno Freight Report</span></div>
+      </div></body></html>`);
       w.document.close();
       w.focus();
-      w.print();
+      setTimeout(()=>w.print(),250);
     }
 
     function syncMasterData() {
@@ -1307,7 +1424,8 @@
       const labels = {
         supplier: 'Supplier', site: 'Delivery Site',
         po: 'PO Number', reference: 'Other Reference', connote: 'Connote',
-        itemType: 'Item Type', qty: 'Quantity', weight: 'Weight (kg)'
+        itemType: 'Item Type', qty: 'Quantity', weight: 'Weight (kg)',
+        length: 'Length (cm)', width: 'Width (cm)', height: 'Height (cm)'
       };
 
       let html = '';
@@ -1411,6 +1529,9 @@
         $("ocrReference").value = extracted.reference || "";
         $("ocrQty").value = extracted.qty || "";
         $("ocrWeight").value = extracted.weight || "";
+        $("ocrLength").value = extracted.length || "";
+        $("ocrWidth").value = extracted.width || "";
+        $("ocrHeight").value = extracted.height || "";
 
         $("ocrSite").value = extracted.site || "";
 
@@ -1458,6 +1579,9 @@
       const itemType = $("ocrItemType")?.value || "";
       const qtyRaw = $("ocrQty")?.value.trim() || "";
       const weightRaw = $("ocrWeight")?.value.trim() || "";
+      const lengthRaw = $("ocrLength")?.value.trim() || "";
+      const widthRaw = $("ocrWidth")?.value.trim() || "";
+      const heightRaw = $("ocrHeight")?.value.trim() || "";
 
       let qty = "";
       if (qtyRaw !== "") {
@@ -1471,7 +1595,16 @@
         if (Number.isFinite(parsedWeight) && parsedWeight >= 0) weight = parsedWeight;
       }
 
-      console.log("📦 Reviewed OCR values:", { supplier, po, site, connote, reference, itemType, qty, weight });
+      const parseDimension = value => {
+        if (!value) return "";
+        const parsed = parseFloat(String(value).replace(/,/g, "").replace(/cm/ig, "").trim());
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : "";
+      };
+      const length = parseDimension(lengthRaw);
+      const width = parseDimension(widthRaw);
+      const height = parseDimension(heightRaw);
+
+      console.log("📦 Reviewed OCR values:", { supplier, po, site, connote, reference, itemType, qty, weight, length, width, height });
 
       if (supplier) $("supplier").value = supplier;
       if (po) $("po").value = po;
@@ -1481,7 +1614,7 @@
 
       const itemsBody = $("itemsBody");
       itemsBody.innerHTML = "";
-      itemsBody.appendChild(makeItemRow({ type: itemType, qty, weight, length: "", width: "", height: "" }));
+      itemsBody.appendChild(makeItemRow({ type: itemType, qty, weight, length, width, height }));
       updateItemSummary();
 
       closeOcr();
