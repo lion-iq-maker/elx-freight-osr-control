@@ -1144,18 +1144,14 @@
 
     function reportBrandHeader(title, subtitle) {
       return `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:2px solid #e31b23;margin-bottom:18px;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:62px;height:62px;border:3px solid #e31b23;border-radius:12px;display:grid;place-items:center;color:#e31b23;font-size:22px;font-weight:950;letter-spacing:-1px;">ELX</div>
-            <div>
-              <div style="font-size:24px;font-weight:900;color:#111827;letter-spacing:-.03em;">Energy LogistiX</div>
-              <div style="font-size:9px;color:#64748b;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">Supply Chain Partners</div>
-            </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:16px;border-bottom:3px solid #e31b23;margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:18px;">
+            <img src="https://energylogistix.com.au/wp/wp-content/uploads/2021/10/ELX-Identity-RGBREVTAG.png" alt="Energy LogistiX" style="width:290px;max-height:92px;object-fit:contain;display:block;">
           </div>
           <div style="text-align:right;">
-            <div style="font-size:17px;font-weight:900;color:#111827;text-transform:uppercase;">${esc(title)}</div>
-            <div style="font-size:22px;font-weight:900;color:#e31b23;margin-top:3px;">PERTH DYNO</div>
-            <div style="font-size:10px;color:#64748b;margin-top:4px;">${esc(subtitle)}</div>
+            <div style="font-size:20px;font-weight:900;color:#111827;text-transform:uppercase;letter-spacing:.01em;">${esc(title)}</div>
+            <div style="font-size:25px;font-weight:900;color:#e31b23;margin-top:4px;">PERTH DYNO</div>
+            <div style="font-size:11px;color:#475569;font-weight:700;margin-top:5px;">${esc(subtitle)}</div>
           </div>
         </div>`;
     }
@@ -1169,13 +1165,13 @@
       const html = `<!doctype html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><style>
         body{font-family:Arial,sans-serif;color:#111827}
         table{border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt}
-        th{background:#e31b23;color:#fff;font-weight:bold;padding:8px;border-bottom:2px solid #111827;white-space:nowrap}
-        td{padding:7px 8px;border-bottom:1px solid #dfe3e8;white-space:nowrap}
-        .title{font-size:20pt;font-weight:bold;color:#111827}
-        .accent{font-size:16pt;font-weight:bold;color:#e31b23}
-        .sub{font-size:9pt;color:#64748b}
+        th{background:#e31b23;color:#fff;font-weight:bold;padding:9px;border-bottom:2px solid #111827;white-space:nowrap;font-size:11pt}
+        td{padding:8px 9px;border-bottom:1px solid #d7dce2;white-space:nowrap;font-size:10.5pt;color:#111827;font-weight:600}
+        .title{font-size:22pt;font-weight:bold;color:#111827}
+        .accent{font-size:18pt;font-weight:bold;color:#e31b23}
+        .sub{font-size:10pt;color:#475569;font-weight:600}
       </style></head><body><table>
-        <tr><td colspan="14" class="title">Energy LogistiX | Supply Chain Partners</td></tr>
+        <tr><td colspan="14" class="title"><img src="https://energylogistix.com.au/wp/wp-content/uploads/2021/10/ELX-Identity-RGBREVTAG.png" alt="Energy LogistiX" style="width:260px;height:auto;vertical-align:middle;"></td></tr>
         <tr><td colspan="14" class="accent">PERTH DYNO FREIGHT REPORT</td></tr>
         <tr><td colspan="14" class="sub">Generated ${esc(new Date().toLocaleString("en-AU"))} | ${esc($("reportDateFrom").value)} to ${esc($("reportDateTo").value)}</td></tr>
         <tr>${headers.map(h=>"<th>"+esc(h)+"</th>").join("")}</tr>
@@ -1208,17 +1204,17 @@
         *{box-sizing:border-box}
         body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:0;background:#fff}
         .wrap{padding:2px}
-        .meta{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #d9dee5;border-radius:12px;overflow:hidden;margin:12px 0 20px}
-        .meta div{padding:10px 12px;border-right:1px solid #d9dee5}
+        .meta{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #cfd5dc;border-radius:12px;overflow:hidden;margin:14px 0 22px}
+        .meta div{padding:12px 14px;border-right:1px solid #cfd5dc}
         .meta div:last-child{border-right:0}
-        .meta small{display:block;color:#64748b;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
-        .meta strong{display:block;margin-top:4px;font-size:11px}
-        h2{font-size:15px;margin:0 0 9px;text-transform:uppercase}
+        .meta small{display:block;color:#374151;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.055em}
+        .meta strong{display:block;margin-top:4px;font-size:12px;color:#111827}
+        h2{font-size:17px;margin:0 0 11px;text-transform:uppercase;color:#111827}
         table{width:100%;border-collapse:collapse}
-        th{background:#e31b23;color:#fff;padding:7px 5px;font-size:7px;text-transform:uppercase;text-align:left;white-space:nowrap}
-        td{padding:6px 5px;font-size:7px;border-bottom:1px solid #dfe3e8;vertical-align:top}
-        tbody tr:nth-child(even){background:#fafbfc}
-        .footer{margin-top:18px;border-top:1px solid #d9dee5;padding-top:9px;display:flex;justify-content:space-between;font-size:8px;color:#64748b}
+        th{background:#e31b23;color:#fff;padding:9px 6px;font-size:8.5px;font-weight:900;text-transform:uppercase;text-align:left;white-space:nowrap}
+        td{padding:8px 6px;font-size:9px;font-weight:600;color:#111827;border-bottom:1px solid #d7dce2;vertical-align:top;line-height:1.28}
+        tbody tr:nth-child(even){background:#f7f8fa}
+        .footer{margin-top:18px;border-top:1px solid #cfd5dc;padding-top:10px;display:flex;justify-content:space-between;font-size:9px;font-weight:700;color:#475569}
       `;
 
       const subtitle = `Generated ${new Date().toLocaleString("en-AU")}`;
@@ -1239,7 +1235,7 @@
       </div></body></html>`);
       w.document.close();
       w.focus();
-      setTimeout(()=>w.print(),250);
+      setTimeout(()=>w.print(),700);
     }
 
     function syncMasterData() {
