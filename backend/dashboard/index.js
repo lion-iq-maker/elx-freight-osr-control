@@ -19,9 +19,7 @@ module.exports = async function (context, req) {
 
         const statuses = [
             'Goods Received',
-            'Location Assigned',
-            'SAP Validated',
-            'Ready for Dispatch',
+            'Location Assigned',            'Ready for Dispatch',
             'Dispatched',
             'Delivered',
             'Ready to Invoice'
