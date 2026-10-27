@@ -98,6 +98,9 @@ BEGIN
         item_type NVARCHAR(50) NOT NULL,
         quantity INT NOT NULL CHECK (quantity > 0),
         weight_kg DECIMAL(10,2) NOT NULL CHECK (weight_kg >= 0),
+        length_cm DECIMAL(10,2) NULL,
+        width_cm DECIMAL(10,2) NULL,
+        height_cm DECIMAL(10,2) NULL,
         created_at_utc DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
         FOREIGN KEY (receipt_id) REFERENCES FreightReceipts(id) ON DELETE CASCADE
     );
