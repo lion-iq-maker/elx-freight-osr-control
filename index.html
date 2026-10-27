@@ -371,6 +371,9 @@
     #receiptModal .receipt-table th { color: #475569 !important; font-weight: 900 !important; }
     #receiptModal .receipt-url { color: #475569 !important; }
   </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -530,7 +533,7 @@
         </div>
         <div class="view" id="view-reports">
           <div class="panel fill">
-            <div class="panel-head"><div><h3>Perth Dyno Freight Report</h3><p>Operational freight report with item dimensions and current status.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-light" id="exportReportPdf">ELX PDF Report</button><button class="btn btn-primary" id="exportReportExcel">ELX Excel Report</button></div></div>
+            <div class="panel-head"><div><h3>Perth Dyno Freight Report</h3><p>Operational freight report with item dimensions and current status.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-light" id="exportReportPdf">Download PDF</button><button class="btn btn-primary" id="exportReportExcel">ELX Excel Report</button></div></div>
             <div class="search-row">
               <label style="font-size:11px;font-weight:850;color:var(--muted);">From:</label><input type="date" id="reportDateFrom">
               <label style="font-size:11px;font-weight:850;color:var(--muted);">To:</label><input type="date" id="reportDateTo">
@@ -643,6 +646,7 @@
 
   <script>
     const API_BASE = 'https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net/api';
+    const ELX_LOGO_DATA = 'data:image/jpeg;base64,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';
 
     const STATUS = ["Goods Received","Location Assigned","Ready for Dispatch","Dispatched","Delivered","Ready to Invoice","Rejected"];
     const DEFAULT_STAFF = ["Jacob Scammell","Stephanie Ford","Jose Diaz","Kathy Pearce"];
@@ -1189,53 +1193,146 @@
 
     function exportReportPdf() {
       if (!currentReportRecords.length) return showToast("No report rows to export");
+      if (!window.jspdf || !window.jspdf.jsPDF) return showToast("PDF library is still loading — please try again");
 
-      const headers = ["ELX GR","Date","Supplier","PO","Delivery Site","Items","Qty","Weight","L","W","H","Location","Status","Received By"];
-      const rows = currentReportRecords.map(reportRowValues);
-      const table = '<table><thead><tr>'+headers.map(h=>"<th>"+esc(h)+"</th>").join("")+'</tr></thead><tbody>'+
-        rows.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v ?? "")+"</td>").join("")+"</tr>").join("")+
-        "</tbody></table>";
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a3"
+      });
 
-      const w = window.open("", "_blank");
-      if (!w) return showToast("Allow pop-ups to print the report");
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const marginX = 16;
+      const red = [227, 27, 35];
+      const dark = [17, 24, 39];
+      const mid = [71, 85, 105];
+      const light = [232, 235, 239];
 
-      const css = `
-        @page{size:A3 landscape;margin:12mm}
-        *{box-sizing:border-box}
-        body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:0;background:#fff}
-        .wrap{padding:2px}
-        .meta{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #cfd5dc;border-radius:12px;overflow:hidden;margin:14px 0 22px}
-        .meta div{padding:12px 14px;border-right:1px solid #cfd5dc}
-        .meta div:last-child{border-right:0}
-        .meta small{display:block;color:#374151;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.055em}
-        .meta strong{display:block;margin-top:4px;font-size:12px;color:#111827}
-        h2{font-size:17px;margin:0 0 11px;text-transform:uppercase;color:#111827}
-        table{width:100%;border-collapse:collapse}
-        th{background:#e31b23;color:#fff;padding:9px 6px;font-size:8.5px;font-weight:900;text-transform:uppercase;text-align:left;white-space:nowrap}
-        td{padding:8px 6px;font-size:9px;font-weight:600;color:#111827;border-bottom:1px solid #d7dce2;vertical-align:top;line-height:1.28}
-        tbody tr:nth-child(even){background:#f7f8fa}
-        .footer{margin-top:18px;border-top:1px solid #cfd5dc;padding-top:10px;display:flex;justify-content:space-between;font-size:9px;font-weight:700;color:#475569}
-      `;
+      try {
+        doc.addImage(ELX_LOGO_DATA, "JPEG", marginX, 12, 70, 24);
+      } catch (logoError) {
+        console.warn("ELX logo could not be embedded:", logoError);
+      }
 
-      const subtitle = `Generated ${new Date().toLocaleString("en-AU")}`;
-      const header = reportBrandHeader("OFFICIAL FREIGHT REPORT", subtitle);
+      doc.setTextColor(...dark);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("OFFICIAL FREIGHT REPORT", 272, 18);
+
+      doc.setTextColor(...red);
+      doc.setFontSize(21);
+      doc.text("PERTH DYNO", 272, 27);
+
+      doc.setTextColor(...mid);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.text("Generated " + new Date().toLocaleString("en-AU"), 272, 34);
+
+      doc.setDrawColor(...red);
+      doc.setLineWidth(0.8);
+      doc.line(marginX, 41, pageWidth - marginX, 41);
+
       const from = $("reportDateFrom").value;
       const to = $("reportDateTo").value;
+      const metaY = 49;
+      const boxW = (pageWidth - (marginX * 2)) / 4;
 
-      w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>ELX Perth Dyno Freight Report</title><style>${css}</style></head><body><div class="wrap">${header}
-        <div class="meta">
-          <div><small>Report Period</small><strong>${esc(from)} to ${esc(to)}</strong></div>
-          <div><small>Records</small><strong>${rows.length}</strong></div>
-          <div><small>Profile</small><strong>Perth Dyno Freight</strong></div>
-          <div><small>Generated</small><strong>${esc(new Date().toLocaleString("en-AU"))}</strong></div>
-        </div>
-        <h2>Freight Manifest</h2>
-        ${table}
-        <div class="footer"><span>Energy LogistiX | Supply Chain Partners</span><span>Perth Dyno Freight Report</span></div>
-      </div></body></html>`);
-      w.document.close();
-      w.focus();
-      setTimeout(()=>w.print(),700);
+      const meta = [
+        ["REPORT PERIOD", from + " to " + to],
+        ["RECORDS", String(currentReportRecords.length)],
+        ["PROFILE", "Perth Dyno Freight"],
+        ["GENERATED", new Date().toLocaleString("en-AU")]
+      ];
+
+      meta.forEach((item, i) => {
+        const x = marginX + (i * boxW);
+        doc.setDrawColor(202, 208, 216);
+        doc.setLineWidth(0.25);
+        doc.rect(x, metaY, boxW, 16);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(...mid);
+        doc.text(item[0], x + 4, metaY + 5);
+
+        doc.setFontSize(10.5);
+        doc.setTextColor(...dark);
+        doc.text(item[1], x + 4, metaY + 11.5);
+      });
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(...dark);
+      doc.text("FREIGHT MANIFEST", marginX, 75);
+
+      const headers = [["ELX GR","Date","Supplier","PO","Delivery Site","Items","Qty","Weight","L","W","H","Location","Status","Received By"]];
+      const rows = currentReportRecords.map(r => {
+        const v = reportRowValues(r);
+        return [
+          v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8],v[9],v[10],v[11],v[12],v[13]
+        ];
+      });
+
+      doc.autoTable({
+        head: headers,
+        body: rows,
+        startY: 81,
+        margin: { left: marginX, right: marginX, bottom: 20 },
+        theme: "grid",
+        styles: {
+          font: "helvetica",
+          fontSize: 8.5,
+          textColor: dark,
+          cellPadding: 2.1,
+          lineColor: light,
+          lineWidth: 0.2,
+          valign: "middle",
+          overflow: "linebreak"
+        },
+        headStyles: {
+          fillColor: red,
+          textColor: [255,255,255],
+          fontStyle: "bold",
+          fontSize: 8.8,
+          cellPadding: 2.4,
+          halign: "left"
+        },
+        alternateRowStyles: {
+          fillColor: [249,250,251]
+        },
+        columnStyles: {
+          0: { cellWidth: 34 },
+          1: { cellWidth: 20 },
+          2: { cellWidth: 31 },
+          3: { cellWidth: 28 },
+          4: { cellWidth: 31 },
+          5: { cellWidth: 27 },
+          6: { cellWidth: 13, halign: "center" },
+          7: { cellWidth: 18, halign: "right" },
+          8: { cellWidth: 13, halign: "center" },
+          9: { cellWidth: 13, halign: "center" },
+          10:{ cellWidth: 13, halign: "center" },
+          11:{ cellWidth: 28 },
+          12:{ cellWidth: 31 },
+          13:{ cellWidth: 30 }
+        },
+        didDrawPage: function() {
+          const h = doc.internal.pageSize.getHeight();
+          doc.setDrawColor(202,208,216);
+          doc.setLineWidth(0.25);
+          doc.line(marginX, h - 12, pageWidth - marginX, h - 12);
+          doc.setFont("helvetica","normal");
+          doc.setFontSize(8.5);
+          doc.setTextColor(...mid);
+          doc.text("Energy LogistiX | Supply Chain Partners", marginX, h - 7);
+          doc.text("Perth Dyno Freight Report", pageWidth - marginX, h - 7, { align: "right" });
+        }
+      });
+
+      const filename = `ELX-Perth-Dyno-Freight-Report-${from}-to-${to}.pdf`;
+      doc.save(filename);
+      showToast("PDF downloaded");
     }
 
     function syncMasterData() {
