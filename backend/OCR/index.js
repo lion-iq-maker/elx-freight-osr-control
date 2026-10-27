@@ -385,7 +385,8 @@ module.exports = async function (context, req) {
         // ============================================================
         const extracted = {
             supplier: '',
-            site: '',            po: '',
+            site: '',
+            po: '',
             reference: '',
             connote: '',
             itemType: '',
@@ -395,7 +396,8 @@ module.exports = async function (context, req) {
 
         const extractionSource = {
             supplier: '',
-            site: '',            po: '',
+            site: '',
+            po: '',
             reference: '',
             connote: '',
             itemType: '',
