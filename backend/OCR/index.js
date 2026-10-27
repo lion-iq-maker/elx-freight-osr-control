@@ -148,13 +148,6 @@ module.exports = async function (context, req) {
                 'deliver to',
                 'ship to'
             ],
-
-            contractor: [
-                'bhp contractor name',
-                'bhp contractor',
-                'contractor name'
-            ],
-
             po: [
                 'po number',
                 'po no',
@@ -329,7 +322,6 @@ module.exports = async function (context, req) {
             if (
                 field === 'supplier' ||
                 field === 'site' ||
-                field === 'contractor' ||
                 field === 'reference' ||
                 field === 'connote' ||
                 field === 'itemType'
@@ -394,7 +386,6 @@ module.exports = async function (context, req) {
         const extracted = {
             supplier: '',
             site: '',
-            contractor: '',
             po: '',
             reference: '',
             connote: '',
@@ -406,7 +397,6 @@ module.exports = async function (context, req) {
         const extractionSource = {
             supplier: '',
             site: '',
-            contractor: '',
             po: '',
             reference: '',
             connote: '',

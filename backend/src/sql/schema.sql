@@ -36,6 +36,33 @@ BEGIN
 END
 GO
 
+-- Supplier master data
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Suppliers')
+BEGIN
+    CREATE TABLE Suppliers (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        name NVARCHAR(200) NOT NULL UNIQUE,
+        is_active BIT NOT NULL DEFAULT 1,
+        created_at_utc DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+        updated_at_utc DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+    );
+END
+GO
+
+-- Delivery site master data
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'DeliverySites')
+BEGIN
+    CREATE TABLE DeliverySites (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        name NVARCHAR(100) NOT NULL UNIQUE,
+        is_active BIT NOT NULL DEFAULT 1,
+        sort_order INT NOT NULL DEFAULT 0,
+        created_at_utc DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+        updated_at_utc DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+    );
+END
+GO
+
 -- Freight Receipts
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'FreightReceipts')
 BEGIN
@@ -44,7 +71,6 @@ BEGIN
         gr_number NVARCHAR(30) NOT NULL UNIQUE,
         supplier NVARCHAR(200) NOT NULL,
         delivery_site NVARCHAR(100) NOT NULL,
-        bhp_contractor_name NVARCHAR(200) NULL,
         po_number NVARCHAR(50) NULL,
         other_reference NVARCHAR(100) NULL,
         connote NVARCHAR(100) NULL,
@@ -72,6 +98,9 @@ BEGIN
         item_type NVARCHAR(50) NOT NULL,
         quantity INT NOT NULL CHECK (quantity > 0),
         weight_kg DECIMAL(10,2) NOT NULL CHECK (weight_kg >= 0),
+        length_cm DECIMAL(10,2) NULL,
+        width_cm DECIMAL(10,2) NULL,
+        height_cm DECIMAL(10,2) NULL,
         created_at_utc DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
         FOREIGN KEY (receipt_id) REFERENCES FreightReceipts(id) ON DELETE CASCADE
     );
@@ -121,13 +150,7 @@ GO
 -- Seed initial locations
 MERGE INTO Locations AS target
 USING (VALUES
-    ('BHP Olympic Dam Cage', 'OD', 1),
-    ('BHP Carrapateena Cage', 'CAR', 2),
-    ('BHP Prominent Hill Cage', 'PH', 3),
-    ('Quarantine / Exception Area', 'QUAR', 4),
-    ('General Receiving Area', 'GR', 5),
-    ('Ready Dispatch Zone', 'RD', 6),
-    ('Loaded / Outbound Bay', 'OB', 7)
+    ('Perth Warehouse', 'PERTH', 1)
 ) AS source (name, code, sort_order)
 ON target.name = source.name
 WHEN MATCHED THEN

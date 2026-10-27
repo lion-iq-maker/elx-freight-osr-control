@@ -49,7 +49,6 @@ async function handleGet(context, req, connectionString) {
                         r.gr_number AS grNumber,
                         r.supplier,
                         r.delivery_site AS site,
-                        r.bhp_contractor_name AS contractor,
                         r.po_number AS po,
                         r.other_reference AS reference,
                         r.connote,
@@ -104,7 +103,10 @@ async function handleGet(context, req, connectionString) {
                     SELECT id,
                            item_type AS type,
                            quantity  AS qty,
-                           weight_kg AS weight
+                           weight_kg AS weight,
+                           length_cm AS length,
+                           width_cm AS width,
+                           height_cm AS height
                     FROM FreightItems
                     WHERE receipt_id = @receiptId
                     ORDER BY id ASC
@@ -495,7 +497,6 @@ async function handlePost(context, req, connectionString) {
                 .input('grNumber', sql.NVarChar, grNumber)
                 .input('supplier', sql.NVarChar, body.supplier)
                 .input('site', sql.NVarChar, body.site)
-                .input('contractor', sql.NVarChar, body.contractor || null)
                 .input('po', sql.NVarChar, body.po || null)
                 .input('reference', sql.NVarChar, body.reference || null)
                 .input('connote', sql.NVarChar, body.connote || null)
@@ -513,7 +514,7 @@ async function handlePost(context, req, connectionString) {
                 .input('receivedAt', sql.DateTime2, now)
                 .query(`
                     INSERT INTO FreightReceipts (
-                        gr_number, supplier, delivery_site, bhp_contractor_name,
+                        gr_number, supplier, delivery_site,
                         po_number, other_reference, connote, notes, ocr_extraction,
                         label_photo, freight_photo,
                         current_status, current_location_id,
@@ -521,7 +522,7 @@ async function handlePost(context, req, connectionString) {
                     )
                     OUTPUT INSERTED.id
                     VALUES (
-                        @grNumber, @supplier, @site, @contractor,
+                        @grNumber, @supplier, @site,
                         @po, @reference, @connote, @notes, @ocrExtraction,
                         @labelPhoto, @freightPhoto,
                         @status, @locationId,
@@ -536,9 +537,18 @@ async function handlePost(context, req, connectionString) {
                     .input('itemType', sql.NVarChar, item.type || 'Other')
                     .input('quantity', sql.Int, Number(item.qty) || 1)
                     .input('weight', sql.Decimal(10,2), Number(item.weight) || 0)
+                    .input('length', sql.Decimal(10,2), item.length === null || item.length === undefined || item.length === '' ? null : Number(item.length))
+                    .input('width', sql.Decimal(10,2), item.width === null || item.width === undefined || item.width === '' ? null : Number(item.width))
+                    .input('height', sql.Decimal(10,2), item.height === null || item.height === undefined || item.height === '' ? null : Number(item.height))
                     .query(`
-                        INSERT INTO FreightItems (receipt_id, item_type, quantity, weight_kg)
-                        VALUES (@receiptId, @itemType, @quantity, @weight)
+                        INSERT INTO FreightItems (
+                            receipt_id, item_type, quantity, weight_kg,
+                            length_cm, width_cm, height_cm
+                        )
+                        VALUES (
+                            @receiptId, @itemType, @quantity, @weight,
+                            @length, @width, @height
+                        )
                     `);
             }
 
@@ -550,7 +560,7 @@ async function handlePost(context, req, connectionString) {
                 .input('userId', sql.Int, userId)
                 .input('displayName', sql.NVarChar, body.receivedBy)
                 .input('performedAt', sql.DateTime2, now)
-                .input('note', sql.NVarChar, 'Supplier freight received at ELX Largs North depot')
+                .input('note', sql.NVarChar, 'Supplier freight received at Perth Warehouse')
                 .query(`
                     INSERT INTO LifecycleEvents (
                         receipt_id, event_type,

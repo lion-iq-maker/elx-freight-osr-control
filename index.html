@@ -375,20 +375,20 @@
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="brand"><div class="brand-mark">ELX</div><div><h1>Freight Control</h1><p>Energy LogistiX · BHP Freight</p></div></div>
+      <div class="brand"><div class="brand-mark">ELX</div><div><h1>Freight Control</h1><p>Energy LogistiX · Perth Dyno Freight</p></div></div>
       <nav class="nav" id="nav">
         <div class="nav-item active" data-view="dashboard"><span class="nav-icon">▦</span>Dashboard</div>
         <div class="nav-item" data-view="receive"><span class="nav-icon">＋</span>Goods Received</div>
         <div class="nav-item" data-view="tracking"><span class="nav-icon">⌕</span>Freight Tracking</div>
         <div class="nav-item" data-view="timeline"><span class="nav-icon">◷</span>Audit Timeline</div>
-        <div class="nav-item disabled" data-view="reports" aria-disabled="true"><span class="nav-icon">▥</span>Reports</div>
+        <div class="nav-item" data-view="reports"><span class="nav-icon">▥</span>Reports</div>
         <div class="nav-item disabled" data-view="settings" aria-disabled="true"><span class="nav-icon">⚙</span>Admin / Settings</div>
       </nav>
-      <div class="sidebar-bottom"><div class="role-card"><div class="name">ELX Warehouse Team</div><div class="meta">Largs North Depot · BHP Freight</div></div></div>
+      <div class="sidebar-bottom"><div class="role-card"><div class="name">ELX Warehouse Team</div><div class="meta">Perth Warehouse · Perth Dyno Freight</div></div></div>
     </aside>
     <main>
       <section class="header">
-        <div><div class="eyebrow">● Live freight lifecycle</div><h2 id="pageTitle">ELX Freight Control</h2><p id="pageSubtitle">BHP freight visibility from supplier receipt to site delivery and invoice readiness.</p></div>
+        <div><div class="eyebrow">● Live freight lifecycle</div><h2 id="pageTitle">ELX Freight Control</h2><p id="pageSubtitle">Perth Dyno freight visibility from supplier receipt to site delivery and invoice readiness.</p></div>
       </section>
       <section class="kpi-grid" id="kpiSection"></section>
       <section class="view-stage">
@@ -439,9 +439,8 @@
               </div>
               <div class="form-panel receive-form-wrap">
                 <div class="field-grid">
-                  <div class="field"><label>Supplier / Sender <span class="req">*</span></label><input id="supplier" placeholder="e.g. Blackwoods"></div>
-                  <div class="field"><label>Delivery Site <span class="req">*</span></label><select id="site"><option value="">Select BHP destination</option><option>BHP Olympic Dam</option><option>BHP Carrapateena</option><option>BHP Prominent Hill</option><option>Other / Unknown</option></select></div>
-                  <div class="field"><label>BHP Contractor Name</label><input id="contractor" placeholder="Contractor going to site"></div>
+                  <div class="field"><label>Supplier / Sender <span class="req">*</span></label><input id="supplier" list="supplierOptions" placeholder="Select or type supplier"><datalist id="supplierOptions"></datalist></div>
+                  <div class="field"><label>Delivery Site <span class="req">*</span></label><input id="site" list="siteOptions" placeholder="Select or type delivery site"><datalist id="siteOptions"></datalist></div>
                   <div class="field"><label>PO Number</label><input id="po" placeholder="e.g. 4500871234"></div>
                   <div class="field"><label>Other Reference(s)</label><input id="reference" placeholder="Reference / docket / booking"></div>
                   <div class="field"><label>Connote / Consignment</label><input id="connote" placeholder="e.g. CN-ELX-782291"></div>
@@ -450,7 +449,7 @@
                 <table class="items-table"><tbody id="itemsBody"></tbody></table>
                 <button class="btn btn-ghost" id="addItemBtn">+ Add Freight Item</button>
                 <div style="margin-top:14px;font-weight:900;font-size:12px;">Receiving Details</div>
-                <div class="field-grid" style="margin-top:9px;"><div class="field"><label>Received By <span class="req">*</span></label><select id="receivedBy"></select></div><div class="field"><label>Location</label><select id="location"><option value="">Select location</option></select></div></div>
+                <div class="field-grid" style="margin-top:9px;"><div class="field"><label>Received By <span class="req">*</span></label><input id="receivedBy" list="staffOptions" placeholder="Select or type staff member"><datalist id="staffOptions"></datalist></div><div class="field"><label>Location</label><input id="location" list="locationOptions" placeholder="Select or type receiving location"><datalist id="locationOptions"></datalist></div></div>
 
                 <div class="field" style="margin-top:9px;">
                   <label>Freight Photo (box / pallet)</label>
@@ -516,7 +515,7 @@
         </div>
         <div class="view" id="view-locations">
           <div class="panel fill">
-            <div class="panel-head"><div><h3>Locations / Cages</h3><p>Current freight allocation by BHP cage, exception area and dispatch zone.</p></div></div>
+            <div class="panel-head"><div><h3>Locations / Cages</h3><p>Current freight allocation by receiving location and dispatch area.</p></div></div>
             <div class="map-large" id="largeWarehouseMap"></div>
           </div>
         </div>
@@ -528,14 +527,21 @@
         </div>
         <div class="view" id="view-reports">
           <div class="panel fill">
-            <div class="panel-head"><div><h3>Reports & Invoice Readiness</h3><p>Live operational summary from the freight lifecycle dataset.</p></div></div>
+            <div class="panel-head"><div><h3>Reports & Invoice Readiness</h3><p>Live operational summary from the freight lifecycle dataset.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-light" id="exportReportPdf">Print / Save PDF</button><button class="btn btn-primary" id="exportReportExcel">Export Excel</button></div></div>
+            <div class="search-row">
+              <label style="font-size:11px;font-weight:850;color:var(--muted);">From:</label><input type="date" id="reportDateFrom">
+              <label style="font-size:11px;font-weight:850;color:var(--muted);">To:</label><input type="date" id="reportDateTo">
+              <input id="reportSiteFilter" list="siteOptions" placeholder="All delivery sites">
+              <select id="reportStatusFilter" class="status-select"></select>
+              <button class="btn btn-light" id="reportApplyBtn">Apply</button>
+            </div>
             <div class="table-wrap"><table><thead><tr><th>Site</th><th>GR Records</th><th>Total Qty</th><th>Total Weight</th><th>Dispatched+</th><th>Ready to Invoice</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
           </div>
         </div>
         <div class="view" id="view-settings">
           <div class="tab-grid">
             <div class="panel fill"><div class="panel-head"><div><h3>ELX Staff</h3><p>Controls Received By and Updated By dropdowns.</p></div></div><div class="scroll-area"><div class="field"><label>Add ELX Staff Member</label><div style="display:flex;gap:9px;"><input id="newStaff" placeholder="Staff name"><button class="btn btn-primary" id="addStaffBtn">Add</button></div></div><div class="admin-list" id="staffList"></div></div></div>
-            <div class="panel fill"><div class="panel-head"><div><h3>Receiving Locations</h3><p>Manage BHP cages, holding areas and dispatch zones.</p></div></div><div class="scroll-area"><div class="field"><label>Add Cage / Zone</label><div style="display:flex;gap:9px;"><input id="newLocation" placeholder="New location"><button class="btn btn-primary" id="addLocationBtn">Add</button></div></div><div class="admin-list" id="locationList"></div></div></div>
+            <div class="panel fill"><div class="panel-head"><div><h3>Receiving Locations</h3><p>Manage receiving locations, holding areas and dispatch zones.</p></div></div><div class="scroll-area"><div class="field"><label>Add Cage / Zone</label><div style="display:flex;gap:9px;"><input id="newLocation" placeholder="New location"><button class="btn btn-primary" id="addLocationBtn">Add</button></div></div><div class="admin-list" id="locationList"></div></div></div>
           </div>
         </div>
       </section>
@@ -559,8 +565,7 @@
         <div>
           <div class="field-grid">
             <div class="field"><label>Supplier / Sender</label><input id="ocrSupplier" placeholder="Extracted supplier"></div>
-            <div class="field"><label>Delivery Site</label><select id="ocrSite"><option value="">Select extracted site</option><option>BHP Olympic Dam</option><option>BHP Carrapateena</option><option>BHP Prominent Hill</option><option>Other / Unknown</option></select></div>
-            <div class="field"><label>BHP Contractor Name</label><input id="ocrContractor" placeholder="Extracted contractor"></div>
+            <div class="field"><label>Delivery Site</label><input id="ocrSite" list="siteOptions" placeholder="Extracted delivery site"></div>
             <div class="field"><label>PO Number</label><input id="ocrPo" placeholder="Extracted PO"></div>
             <div class="field"><label>Other Reference(s)</label><input id="ocrReference" placeholder="Extracted reference"></div>
             <div class="field"><label>Connote / Consignment</label><input id="ocrConnote" placeholder="Extracted connote"></div>
@@ -634,8 +639,10 @@
     const API_BASE = 'https://func-elx-freight-osr-control-gphyhsaqhdhhc5bd.australiasoutheast-01.azurewebsites.net/api';
 
     const STATUS = ["Goods Received","Location Assigned","SAP Validated","Ready for Dispatch","Dispatched","Delivered","Ready to Invoice","Rejected"];
-    const DEFAULT_STAFF = ["Rahul Tamang","Staff Member 2","Staff Member 3"];
-    const DEFAULT_LOCATIONS = ["BHP Olympic Dam Cage","BHP Carrapateena Cage","BHP Prominent Hill Cage","Quarantine / Exception Area","General Receiving Area","Ready Dispatch Zone","Loaded / Outbound Bay"];
+    const DEFAULT_STAFF = ["Jacob Scammell","Stephanie Ford","Jose Diaz","Kathy Pearce"];
+    const DEFAULT_LOCATIONS = ["Perth Warehouse"];
+    const DEFAULT_SITES = ["Christmas Creek","Solomon","Cloudbreak"];
+    const DEFAULT_SUPPLIERS = [];
     let selectedId = null;
     let selectedImage = null;
     let selectedFile = null;
@@ -646,29 +653,24 @@
 
     function seedRecord(id,supplier,po,site,location,status,qty,weight,user) {
       const t = new Date(Date.now() - Math.floor(Math.random()*6)*3600000).toISOString();
-      return { id, supplier, po, site, location, status, receivedBy:user, reference:"", connote:"", contractor:"", items:[{type:"Pallet", qty, weight}], created:t, updated:t, notes:"", events:[{time:t, event:"Goods Received", user, location, status:"Goods Received", note:"Supplier freight received at Largs North depot"}] };
+      return { id, supplier, po, site, location, status, receivedBy:user, reference:"", connote:"", items:[{type:"Pallet", qty, weight, length:null, width:null, height:null}], created:t, updated:t, notes:"", events:[{time:t, event:"Goods Received", user, location, status:"Goods Received", note:"Supplier freight received at Largs North depot"}] };
     }
 
     const defaultState = {
       staff: DEFAULT_STAFF,
       locations: DEFAULT_LOCATIONS,
-      records: [
-        seedRecord("ELX-GR-20260818-00121","Blackwoods","4500871001","BHP Olympic Dam","BHP Olympic Dam Cage","Location Assigned",2,320,"Rahul Tamang"),
-        seedRecord("ELX-GR-20260818-00122","ATOM Supply","4500871002","BHP Carrapateena","BHP Carrapateena Cage","SAP Validated",4,62,"Staff Member 2"),
-        seedRecord("ELX-GR-20260818-00123","Coates Hire","4500871003","BHP Olympic Dam","Ready Dispatch Zone","Ready for Dispatch",1,410,"Rahul Tamang"),
-        seedRecord("ELX-GR-20260818-00124","Bunzl","4500871004","BHP Prominent Hill","Loaded / Outbound Bay","Dispatched",1,185,"Staff Member 3"),
-        seedRecord("ELX-GR-20260818-00125","Blackwoods","4500871005","BHP Olympic Dam","BHP Olympic Dam Cage","Goods Received",3,210,"Rahul Tamang"),
-        seedRecord("ELX-GR-20260818-00126","Toll","4500871006","BHP Carrapateena","BHP Carrapateena Cage","Delivered",2,145,"Staff Member 2")
-      ]
+      sites: DEFAULT_SITES,
+      suppliers: DEFAULT_SUPPLIERS,
+      records: []
     };
 
     function clone(x) { return JSON.parse(JSON.stringify(x)); }
     let state;
-    try { state = JSON.parse(localStorage.getItem("elx_freight_main_v5")) || clone(defaultState); }
+    try { state = JSON.parse(localStorage.getItem("elx_freight_perth_dyno_v1")) || clone(defaultState); }
     catch { state = clone(defaultState); }
 
     const $ = id => document.getElementById(id);
-    function saveState() { localStorage.setItem("elx_freight_main_v5", JSON.stringify(state)); }
+    function saveState() { localStorage.setItem("elx_freight_perth_dyno_v1", JSON.stringify(state)); }
     function esc(v) { return String(v ?? "").replace(/[&<>"]/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[s])); }
     function totalQty(r) { return r.items.reduce((a,i)=>a+(Number(i.qty)||0),0); }
     function totalWeight(r) { return r.items.reduce((a,i)=>a+(Number(i.weight)||0),0); }
@@ -677,10 +679,10 @@
     function showToast(message) { const t=$("toast"); t.textContent=message; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
 
     const titles = {
-      dashboard:["ELX Freight Control","BHP freight visibility from supplier receipt to site delivery and invoice readiness."],
+      dashboard:["ELX Freight Control","Perth Dyno freight visibility from supplier receipt to site delivery and invoice readiness."],
       receive:["Goods Received","Supplier driver handover with manual entry or OCR-assisted label capture."],
       tracking:["Freight Tracking","Search and move freight through the complete ELX lifecycle."],
-      locations:["Locations / Cages","Physical freight visibility across BHP cages and ELX dispatch zones."],
+      locations:["Locations / Cages","Physical freight visibility across receiving locations and dispatch zones."],
       timeline:["Audit Timeline","Timestamped actions from goods receipt through invoice readiness."],
       reports:["Reports","Operational reporting, delivery completion and invoice readiness."],
       settings:["Admin / Settings","Maintain ELX staff and receiving-location master data."]
@@ -1067,20 +1069,75 @@
         $("itemTimeline").innerHTML=(r.events||[]).slice().reverse().map(e=>`<div class="time-event"><div><strong>${esc(e.event)}</strong><br><small style="color:#64748b;">${fmt(e.time)} · ${esc(e.user||"System")} · ${esc(e.location||"-")}</small><br><small style="color:#64748b;">${esc(e.note||"")}</small></div><span class="badge ${tone(e.status)}">${esc(e.status)}</span></div>`).join("");
     }
 
-    function renderReports() {
-      const sites=["BHP Olympic Dam","BHP Carrapateena","BHP Prominent Hill","Other / Unknown"];
-      $("reportsBody").innerHTML=sites.map(site=>{ const rs=state.records.filter(r=>r.site===site); return `<tr><td><strong>${site}</strong></td><td>${rs.length}</td><td>${rs.reduce((a,r)=>a+totalQty(r),0)}</td><td>${Math.round(rs.reduce((a,r)=>a+totalWeight(r),0))} kg</td><td>${rs.filter(r=>STATUS.indexOf(r.status)>=4).length}</td><td>${rs.filter(r=>r.status==="Ready to Invoice").length}</td></tr>`; }).join("");
+    let currentReportRecords = [];
+
+    async function renderReports() {
+      const from = $("reportDateFrom")?.value || getLocalToday();
+      const to = $("reportDateTo")?.value || from;
+      const dates = getInclusiveDates(from, to);
+      if (!dates) return;
+
+      try {
+        const batches = await Promise.all(dates.map(async date => {
+          const res = await fetch(`${API_BASE}/receipts?date=${encodeURIComponent(date)}&page=1&pageSize=500`);
+          if (!res.ok) throw new Error('Failed to load report data');
+          const data = await res.json();
+          return data.records || [];
+        }));
+
+        let rows = batches.flat();
+        const siteFilter = $("reportSiteFilter")?.value.trim() || "";
+        const statusFilter = $("reportStatusFilter")?.value || "";
+        if (siteFilter) rows = rows.filter(r => r.site === siteFilter);
+        if (statusFilter) rows = rows.filter(r => r.status === statusFilter);
+        currentReportRecords = rows;
+
+        const sites = [...new Set(rows.map(r => r.site).filter(Boolean))].sort();
+        $("reportsBody").innerHTML = sites.length ? sites.map(site => {
+          const rs = rows.filter(r => r.site === site);
+          return `<tr><td><strong>${esc(site)}</strong></td><td>${rs.length}</td><td>${rs.reduce((a,r)=>a+(Number(r.totalQty)||0),0)}</td><td>${Math.round(rs.reduce((a,r)=>a+(Number(r.totalWeight)||0),0))} kg</td><td>${rs.filter(r=>STATUS.indexOf(r.status)>=4 && r.status!=="Rejected").length}</td><td>${rs.filter(r=>r.status==="Ready to Invoice").length}</td></tr>`;
+        }).join("") : '<tr><td colspan="6">No records for the selected filters.</td></tr>';
+      } catch (err) {
+        console.error('Report error:', err);
+        $("reportsBody").innerHTML = '<tr><td colspan="6">Unable to load report data.</td></tr>';
+      }
+    }
+
+    function exportReportExcel() {
+      const headers = ["ELX GR","Supplier","PO","Delivery Site","Items","Total Qty","Total Weight","Location","Status","Received By","Updated"];
+      const rows = currentReportRecords.map(r => [r.grNumber,r.supplier,r.po,r.site,r.itemsSummary,r.totalQty,r.totalWeight,r.location,r.status,r.receivedBy,r.updatedAt]);
+      const html = '<table><tr>' + headers.map(h=>'<th>'+esc(h)+'</th>').join('') + '</tr>' +
+        rows.map(row=>'<tr>'+row.map(v=>'<td>'+esc(v ?? '')+'</td>').join('')+'</tr>').join('') + '</table>';
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Perth-Dyno-Freight-Report-${$("reportDateFrom").value}-to-${$("reportDateTo").value}.xls`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function exportReportPdf() {
+      const table = document.querySelector('#view-reports .table-wrap')?.innerHTML || '';
+      const w = window.open('', '_blank');
+      if (!w) return showToast('Allow pop-ups to print the report');
+      w.document.write(`<html><head><title>Perth Dyno Freight Report</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}h2{margin-bottom:4px}p{color:#64748b}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left;font-size:12px}th{font-weight:700}</style></head><body><h2>Perth Dyno Freight Report</h2><p>${esc($("reportDateFrom").value)} to ${esc($("reportDateTo").value)}</p>${table}</body></html>`);
+      w.document.close();
+      w.focus();
+      w.print();
     }
 
     function syncMasterData() {
-      function options(arr,placeholder) { return `<option value="">${placeholder}</option>` + arr.map(x=>`<option>${esc(x)}</option>`).join(""); }
-      const rv=$("receivedBy").value;
-      $("receivedBy").innerHTML=options(state.staff,"Select ELX staff member");
-      if(state.staff.includes(rv)) $("receivedBy").value=rv;
-      $("staffList").innerHTML=state.staff.map((s,i)=>`<div class="staff-line"><span>${esc(s)}</span><button class="btn btn-light removeStaff" data-i="${i}">Remove</button></div>`).join("");
-      $("locationList").innerHTML=state.locations.map((s,i)=>`<div class="staff-line"><span>${esc(s)}</span><button class="btn btn-light removeLocation" data-i="${i}">Remove</button></div>`).join("");
-      document.querySelectorAll(".removeStaff").forEach(b=>b.onclick=()=>{ if(state.staff.length>1){ state.staff.splice(+b.dataset.i,1); saveState(); renderAll(); } });
-      document.querySelectorAll(".removeLocation").forEach(b=>b.onclick=()=>{ if(state.locations.length>1){ state.locations.splice(+b.dataset.i,1); saveState(); renderAll(); } });
+      const datalist = (id, arr) => {
+        const el = $(id);
+        if (el) el.innerHTML = arr.map(x => `<option value="${esc(x)}"></option>`).join("");
+      };
+      datalist("staffOptions", state.staff || []);
+      datalist("locationOptions", state.locations || []);
+      datalist("siteOptions", state.sites || []);
+      datalist("supplierOptions", state.suppliers || []);
+
+      if ($("staffList")) $("staffList").innerHTML=(state.staff||[]).map(s=>`<div class="staff-line"><span>${esc(s)}</span></div>`).join("");
+      if ($("locationList")) $("locationList").innerHTML=(state.locations||[]).map(s=>`<div class="staff-line"><span>${esc(s)}</span></div>`).join("");
     }
 
     function renderAll() {
@@ -1093,12 +1150,15 @@
       updateItemSummary();
     }
 
-    function makeItemRow(data = { type: "", qty: "", weight: "" }) {
+    function makeItemRow(data = { type: "", qty: "", weight: "", length: "", width: "", height: "" }) {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><div class="field"><label>Item Type</label><select class="itemType"><option value="">Select type</option>${["Carton","Satchel","Pallet","Crate","Basket","Parcel","Stillage","IBC","Loose Freight","Other"].map(x=>`<option value="${x}"${x===data.type?" selected":""}>${x}</option>`).join("")}</select></div></td>
         <td><div class="field"><label>Quantity</label><input class="itemQty" type="number" min="1" value="${data.qty ?? ""}" placeholder="Quantity"></div></td>
         <td><div class="field"><label>Weight (kg)</label><input class="itemWeight" type="number" min="0" step="0.1" value="${data.weight ?? ""}" placeholder="Weight"></div></td>
+        <td><div class="field"><label>L (cm)</label><input class="itemLength" type="number" min="0" step="0.1" value="${data.length ?? ""}" placeholder="L"></div></td>
+        <td><div class="field"><label>W (cm)</label><input class="itemWidth" type="number" min="0" step="0.1" value="${data.width ?? ""}" placeholder="W"></div></td>
+        <td><div class="field"><label>H (cm)</label><input class="itemHeight" type="number" min="0" step="0.1" value="${data.height ?? ""}" placeholder="H"></div></td>
         <td><button class="remove-line removeItem" type="button">×</button></td>`;
       return tr;
     }
@@ -1117,7 +1177,7 @@
     }
 
     $("addItemBtn").onclick = () => {
-      $("itemsBody").appendChild(makeItemRow({ type: "", qty: "", weight: "" }));
+      $("itemsBody").appendChild(makeItemRow({ type: "", qty: "", weight: "", length: "", width: "", height: "" }));
       updateItemSummary();
     };
     $("itemsBody").addEventListener("input", updateItemSummary);
@@ -1131,7 +1191,7 @@
     });
 
     function clearReceive() {
-      ["supplier","contractor","po","reference","connote","notes"].forEach(id=>$(id).value="");
+      ["supplier","po","reference","connote","notes"].forEach(id=>$(id).value="");
       $("site").value="";
       $("receivedBy").value="";
       if ($("location")) $("location").value = "";
@@ -1245,7 +1305,7 @@
       if (!panel || !fields) return;
 
       const labels = {
-        supplier: 'Supplier', site: 'Delivery Site', contractor: 'BHP Contractor',
+        supplier: 'Supplier', site: 'Delivery Site',
         po: 'PO Number', reference: 'Other Reference', connote: 'Connote',
         itemType: 'Item Type', qty: 'Quantity', weight: 'Weight (kg)'
       };
@@ -1347,18 +1407,12 @@
 
         $("ocrSupplier").value = extracted.supplier || "";
         $("ocrPo").value = extracted.po || "";
-        $("ocrContractor").value = extracted.contractor || "";
         $("ocrConnote").value = extracted.connote || "";
         $("ocrReference").value = extracted.reference || "";
         $("ocrQty").value = extracted.qty || "";
         $("ocrWeight").value = extracted.weight || "";
 
-        const siteMap = {
-          "BHP Olympic Dam": "BHP Olympic Dam",
-          "BHP Carrapateena": "BHP Carrapateena",
-          "BHP Prominent Hill": "BHP Prominent Hill"
-        };
-        $("ocrSite").value = siteMap[extracted.site || ""] || "";
+        $("ocrSite").value = extracted.site || "";
 
         $("ocrItemType").value = "";
         if (extracted.itemType) {
@@ -1399,7 +1453,6 @@
       const supplier = $("ocrSupplier")?.value.trim() || "";
       const po = $("ocrPo")?.value.trim() || "";
       const site = $("ocrSite")?.value || "";
-      const contractor = $("ocrContractor")?.value.trim() || "";
       const connote = $("ocrConnote")?.value.trim() || "";
       const reference = $("ocrReference")?.value.trim() || "";
       const itemType = $("ocrItemType")?.value || "";
@@ -1418,18 +1471,17 @@
         if (Number.isFinite(parsedWeight) && parsedWeight >= 0) weight = parsedWeight;
       }
 
-      console.log("📦 Reviewed OCR values:", { supplier, po, site, contractor, connote, reference, itemType, qty, weight });
+      console.log("📦 Reviewed OCR values:", { supplier, po, site, connote, reference, itemType, qty, weight });
 
       if (supplier) $("supplier").value = supplier;
       if (po) $("po").value = po;
       if (site) $("site").value = site;
-      if (contractor) $("contractor").value = contractor;
       if (connote) $("connote").value = connote;
       if (reference) $("reference").value = reference;
 
       const itemsBody = $("itemsBody");
       itemsBody.innerHTML = "";
-      itemsBody.appendChild(makeItemRow({ type: itemType, qty, weight }));
+      itemsBody.appendChild(makeItemRow({ type: itemType, qty, weight, length: "", width: "", height: "" }));
       updateItemSummary();
 
       closeOcr();
@@ -1450,13 +1502,15 @@
       const items = [...document.querySelectorAll("#itemsBody tr")].map(r => ({
         type: r.querySelector(".itemType").value,
         qty: Number(r.querySelector(".itemQty").value) || 1,
-        weight: Number(r.querySelector(".itemWeight").value) || 0
+        weight: Number(r.querySelector(".itemWeight").value) || 0,
+        length: r.querySelector(".itemLength").value === "" ? null : Number(r.querySelector(".itemLength").value),
+        width: r.querySelector(".itemWidth").value === "" ? null : Number(r.querySelector(".itemWidth").value),
+        height: r.querySelector(".itemHeight").value === "" ? null : Number(r.querySelector(".itemHeight").value)
       }));
 
       const payload = {
         supplier: $("supplier").value.trim(),
         site: $("site").value,
-        contractor: $("contractor").value.trim() || null,
         po: $("po").value.trim() || null,
         reference: $("reference").value.trim() || null,
         connote: $("connote").value.trim() || null,
@@ -1468,6 +1522,13 @@
         labelPhoto: labelPhotoBase64,
         freightPhoto: freightPhotoBase64
       };
+
+      await Promise.all([
+        upsertMaster('suppliers', x=>({name:x}), 'suppliers', $("supplier").value),
+        upsertMaster('delivery-sites', x=>({name:x}), 'sites', $("site").value),
+        upsertMaster('staff', x=>({displayName:x}), 'staff', $("receivedBy").value),
+        $("location").value ? upsertMaster('locations', x=>({name:x}), 'locations', $("location").value) : Promise.resolve()
+      ]);
 
       const btn = $("confirmReceiveBtn");
       btn.disabled = true;
@@ -1539,7 +1600,7 @@
 
         const itemsHtml = (r.items && r.items.length)
           ? r.items.map(it =>
-              `<tr><td>${esc(it.type || 'Freight')}</td><td>${Number(it.qty)||0}</td><td>${Number(it.weight)||0} kg</td></tr>`
+              `<tr><td>${esc(it.type || 'Freight')}</td><td>${Number(it.qty)||0}</td><td>${Number(it.weight)||0} kg</td><td>${it.length ?? '-'} × ${it.width ?? '-'} × ${it.height ?? '-'} cm</td></tr>`
             ).join('')
           : '<tr><td colspan="3" style="color:var(--muted);">No items</td></tr>';
 
@@ -1549,8 +1610,7 @@
             ${row('ELX GR', r.grNumber)}
             ${row('Supplier / Sender', r.supplier)}
             ${row('Delivery Site', r.site)}
-            ${row('BHP Contractor', r.contractor)}
-            ${row('PO Number', r.po)}
+                        ${row('PO Number', r.po)}
             ${row('Other Reference(s)', r.reference)}
             ${row('Connote / Consignment', r.connote)}
           </div>
@@ -1558,7 +1618,7 @@
           <div class="detail-box" style="margin-bottom:10px;">
             <div style="font-weight:900;font-size:12px;margin-bottom:6px;">Freight Items</div>
             <table class="receipt-table">
-              <thead><tr><th>Item Type</th><th>Quantity</th><th>Weight (kg)</th></tr></thead>
+              <thead><tr><th>Item Type</th><th>Quantity</th><th>Weight (kg)</th><th>L × W × H (cm)</th></tr></thead>
               <tbody>${itemsHtml}</tbody>
             </table>
             <div style="margin-top:6px;font-size:11px;color:var(--muted);">
@@ -1637,7 +1697,7 @@
       $("receiptSite").value = record.site || "";
       $("receiptReceivedBy").value = record.receivedBy || "";
       $("receiptDateTime").value = new Date(record.created).toLocaleString();
-      $("receiptItemsBody").innerHTML = (record.items || []).map(i => `<tr><td>${esc(i.type || "Freight")}</td><td>${Number(i.qty)||0}</td><td>${Number(i.weight)||0} kg</td></tr>`).join("");
+      $("receiptItemsBody").innerHTML = (record.items || []).map(i => `<tr><td>${esc(i.type || "Freight")}</td><td>${Number(i.qty)||0}</td><td>${Number(i.weight)||0} kg · ${i.length ?? "-"} × ${i.width ?? "-"} × ${i.height ?? "-"} cm</td></tr>`).join("");
       $("receiptUrlText").textContent = url;
       $("receiptQr").innerHTML = "";
       if (window.QRCode) {
@@ -1853,12 +1913,7 @@
     document.getElementById('timelineDateTo').value = defaultToday;
 
     function populateLocationDropdown() {
-      const el = document.getElementById('location');
-      if (!el) return;
-      const cur = el.value;
-      el.innerHTML = '<option value="">Select location</option>' +
-        state.locations.map(loc => `<option value="${esc(loc)}">${esc(loc)}</option>`).join("");
-      if (state.locations.includes(cur)) el.value = cur;
+      syncMasterData();
     }
 
     function populateLocationFilter() {
@@ -1871,45 +1926,84 @@
     }
 
     async function loadStaffAndLocations() {
-      try {
-        const r = await fetch(`${API_BASE}/staff`);
-        if (r.ok) {
-          const d = await r.json();
-          if (Array.isArray(d.staff) && d.staff.length) {
-            state.staff = d.staff.map(s => s.displayName);
-          }
-        }
-      } catch (e) { console.warn('Staff API failed, using local fallback'); }
+      const loaders = [
+        ['staff', 'staff', d => d.staff.map(x=>x.displayName)],
+        ['locations', 'locations', d => d.locations.map(x=>x.name)],
+        ['suppliers', 'suppliers', d => d.suppliers.map(x=>x.name)],
+        ['delivery-sites', 'sites', d => d.deliverySites.map(x=>x.name)]
+      ];
 
-      try {
-        const r = await fetch(`${API_BASE}/locations`);
-        if (r.ok) {
-          const d = await r.json();
-          if (Array.isArray(d.locations) && d.locations.length) {
-            state.locations = d.locations.map(l => l.name);
+      for (const [endpoint, key, map] of loaders) {
+        try {
+          const r = await fetch(`${API_BASE}/${endpoint}`);
+          if (r.ok) {
+            const d = await r.json();
+            const values = map(d);
+            if (Array.isArray(values) && values.length) state[key] = values;
           }
+        } catch (e) {
+          console.warn(endpoint + ' API failed, using local fallback');
         }
-      } catch (e) { console.warn('Locations API failed, using local fallback'); }
+      }
 
       syncMasterData();
-      populateLocationDropdown();
       populateLocationFilter();
     }
+
+    async function upsertMaster(endpoint, payload, stateKey, value) {
+      const clean = String(value || '').trim();
+      if (!clean) return;
+      try {
+        const r = await fetch(`${API_BASE}/${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload(clean))
+        });
+        if (!r.ok) throw new Error(await r.text());
+        if (!state[stateKey].includes(clean)) {
+          state[stateKey].push(clean);
+          state[stateKey].sort((a,b)=>a.localeCompare(b));
+          saveState();
+          syncMasterData();
+          if (stateKey === 'locations') populateLocationFilter();
+        }
+      } catch (err) {
+        console.error('Master-data save failed:', endpoint, err);
+        showToast('Could not save new option: ' + clean);
+      }
+    }
+
+    const autoSaveFields = [
+      ['supplier','suppliers',v=>({name:v}),'suppliers'],
+      ['site','delivery-sites',v=>({name:v}),'sites'],
+      ['receivedBy','staff',v=>({displayName:v}),'staff'],
+      ['location','locations',v=>({name:v}),'locations']
+    ];
+    autoSaveFields.forEach(([id,endpoint,payload,key]) => {
+      $(id)?.addEventListener('change', () => upsertMaster(endpoint,payload,key,$(id).value));
+      $(id)?.addEventListener('blur', () => upsertMaster(endpoint,payload,key,$(id).value));
+    });
 
     populateLocationDropdown();
     populateLocationFilter();
     loadStaffAndLocations();
 
-    $("addStaffBtn").onclick = function() {
+    $("addStaffBtn").onclick = async function() {
       const v = $("newStaff").value.trim();
-      if(v && !state.staff.includes(v)) { state.staff.push(v); $("newStaff").value=""; saveState(); renderAll(); }
+      if(v) { await upsertMaster('staff', x=>({displayName:x}), 'staff', v); $("newStaff").value=""; }
     };
-    $("addLocationBtn").onclick = function() {
+    $("addLocationBtn").onclick = async function() {
       const v = $("newLocation").value.trim();
-      if(v && !state.locations.includes(v)) { state.locations.push(v); $("newLocation").value=""; saveState(); renderAll(); }
+      if(v) { await upsertMaster('locations', x=>({name:x}), 'locations', v); $("newLocation").value=""; }
     };
 
     $("statusFilter").innerHTML = '<option value="">All statuses</option>' + STATUS.map(s => `<option>${s}</option>`).join("");
+    $("reportStatusFilter").innerHTML = '<option value="">All statuses</option>' + STATUS.map(s => `<option>${s}</option>`).join("");
+    $("reportDateFrom").value = defaultToday;
+    $("reportDateTo").value = defaultToday;
+    $("reportApplyBtn").onclick = renderReports;
+    $("exportReportExcel").onclick = exportReportExcel;
+    $("exportReportPdf").onclick = exportReportPdf;
     $("searchInput").addEventListener("input", renderTracking);
     $("statusFilter").addEventListener("change", renderTracking);
     $("locationFilter").addEventListener("change", function() { activeLocationFilter = this.value; renderTracking(); });
