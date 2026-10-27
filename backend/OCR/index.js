@@ -1061,6 +1061,58 @@ module.exports = async function (context, req) {
                 }
             }
         }
+        // ============================================================
+        // 11a. DIMENSION ROW / RAW-TEXT FALLBACK
+        // ============================================================
+        if (
+            !extracted.length ||
+            !extracted.width ||
+            !extracted.height
+        ) {
+            const normalizedRaw =
+                rawText
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+            const tableDims =
+                normalizedRaw.match(
+                    /(?:l(?:ength)?\s*\(?cm\)?)[\s:|,-]+(?:w(?:idth)?\s*\(?cm\)?)[\s:|,-]+(?:h(?:eight)?\s*\(?cm\)?)[\s:|,-]+(\d+(?:\.\d+)?)[\s|,-]+(\d+(?:\.\d+)?)[\s|,-]+(\d+(?:\.\d+)?)/i
+                );
+
+            const labelledDims =
+                normalizedRaw.match(
+                    /(?:length|l)\s*\(?cm\)?\s*[:=]?\s*(\d+(?:\.\d+)?)\D{0,30}(?:width|w)\s*\(?cm\)?\s*[:=]?\s*(\d+(?:\.\d+)?)\D{0,30}(?:height|h)\s*\(?cm\)?\s*[:=]?\s*(\d+(?:\.\d+)?)/i
+                );
+
+            const dimsMatch =
+                tableDims ||
+                labelledDims;
+
+            if (dimsMatch) {
+                const [length, width, height] = [
+                    dimsMatch[1],
+                    dimsMatch[2],
+                    dimsMatch[3]
+                ];
+
+                if (!extracted.length) {
+                    extracted.length = length;
+                    extractionSource.length = 'dimension-row-fallback';
+                }
+
+                if (!extracted.width) {
+                    extracted.width = width;
+                    extractionSource.width = 'dimension-row-fallback';
+                }
+
+                if (!extracted.height) {
+                    extracted.height = height;
+                    extractionSource.height = 'dimension-row-fallback';
+                }
+            }
+        }
+
+
 
         // ============================================================
         // 11b. PO NUMBER BUSINESS RULE
@@ -1114,6 +1166,25 @@ module.exports = async function (context, req) {
                         ''
                     )
                     .trim();
+        }
+
+        for (
+            const field
+            of [
+                'length',
+                'width',
+                'height'
+            ]
+        ) {
+            if (
+                extracted[field]
+            ) {
+                extracted[field] =
+                    extracted[field]
+                        .replace(/\s*cm$/i, '')
+                        .replace(/,/g, '')
+                        .trim();
+            }
         }
 
         for (
