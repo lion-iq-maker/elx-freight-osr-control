@@ -372,8 +372,8 @@
     #receiptModal .receipt-url { color: #475569 !important; }
   </style>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+  <script src="./vendor/jspdf.umd.min.js"></script>
+  <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -1193,7 +1193,10 @@
 
     function exportReportPdf() {
       if (!currentReportRecords.length) return showToast("No report rows to export");
-      if (!window.jspdf || !window.jspdf.jsPDF) return showToast("PDF library is still loading — please try again");
+      if (!window.jspdf || !window.jspdf.jsPDF || !window.jspdf.jsPDF.API.autoTable) {
+        console.error("Local PDF libraries failed to initialise");
+        return showToast("PDF engine unavailable");
+      }
 
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({
