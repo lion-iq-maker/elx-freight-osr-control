@@ -16,6 +16,23 @@ module.exports = async function (context, req) {
                 return;
             }
 
+            const siteCheck = await pool.request()
+                .input('siteName', sql.NVarChar(200), name)
+                .query(`
+                    SELECT TOP 1 id
+                    FROM dbo.DeliverySites
+                    WHERE is_active = 1
+                      AND LOWER(LTRIM(RTRIM(name))) = LOWER(LTRIM(RTRIM(@siteName)))
+                `);
+
+            if (siteCheck.recordset.length) {
+                context.res = {
+                    status: 400,
+                    body: JSON.stringify({ error: 'Delivery Site values cannot be saved as Suppliers' })
+                };
+                return;
+            }
+
             const result = await pool.request()
                 .input('name', sql.NVarChar(200), name)
                 .query(`
@@ -39,9 +56,15 @@ module.exports = async function (context, req) {
 
         const result = await pool.request().query(`
             SELECT id, name, is_active AS isActive
-            FROM dbo.Suppliers
-            WHERE is_active = 1
-            ORDER BY name ASC
+            FROM dbo.Suppliers s
+            WHERE s.is_active = 1
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM dbo.DeliverySites d
+                  WHERE d.is_active = 1
+                    AND LOWER(LTRIM(RTRIM(d.name))) = LOWER(LTRIM(RTRIM(s.name)))
+              )
+            ORDER BY s.name ASC
         `);
         context.res = { status: 200, body: JSON.stringify({ suppliers: result.recordset }) };
     } catch (error) {
