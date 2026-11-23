@@ -754,18 +754,52 @@
       return "";
     }
 
+    function extractOcrLineValue(rawText, labels) {
+      const lines = String(rawText || "")
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(Boolean);
+
+      for (const line of lines) {
+        for (const label of labels) {
+          const pattern = new RegExp(
+            "^\\s*" + label + "\\s*[:#-]?\\s*(.+?)\\s*$",
+            "i"
+          );
+          const match = line.match(pattern);
+          if (match && match[1]) return match[1].trim();
+        }
+      }
+      return "";
+    }
+
     function mapPerthDynoOcr(extracted, rawText) {
       const mapped = { ...(extracted || {}) };
       const raw = String(rawText || "");
 
-      const knownSupplier = mapKnownSupplier(raw);
-      if (knownSupplier) mapped.supplier = knownSupplier;
+      // Supplier and Delivery Site are authoritative master-data matches only.
+      // Never carry Azure's generic guess into these fields.
+      mapped.supplier = mapKnownSupplier(raw) || "";
+      mapped.site = mapKnownSite(raw) || "";
 
-      const knownSite = mapKnownSite(raw);
-      if (knownSite) mapped.site = knownSite;
-
+      // PO is deterministic: exactly 10 digits beginning with 450.
       const poMatch = raw.match(/\b(450\d{7})\b/);
       mapped.po = poMatch ? poMatch[1] : "";
+
+      // Parse reference/connote from their own OCR line so the next line
+      // (for example the PO number) cannot be swallowed into the value.
+      const reference = extractOcrLineValue(raw, [
+        "REF(?:ERENCE)?",
+        "OTHER\\s+REF(?:ERENCE)?(?:\\(S\\))?"
+      ]);
+      const connote = extractOcrLineValue(raw, [
+        "CONNOTE",
+        "CONSIGNMENT(?:\\s+NUMBER)?",
+        "CONSIGNMENT\\s+NO"
+      ]);
+
+      mapped.reference = reference || "";
+      mapped.connote = connote || "";
 
       return mapped;
     }
