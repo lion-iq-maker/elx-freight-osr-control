@@ -32,3 +32,5 @@ jobs:
           fs.writeFileSync('/tmp/elx-inline.js',scripts.join('\n'));
           NODE
           node --check /tmp/elx-inline.js
+
+# validation trigger
