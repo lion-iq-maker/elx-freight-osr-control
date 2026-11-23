@@ -12,6 +12,31 @@ module.exports = async function (context, req) {
         const normalizeName = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         const legacyNames = new Set(['bhp carrapateena','bhp carapateena','bhp','perth']);
 
+        if (req.method === 'DELETE') {
+            const name = String((req.body || {}).name || '').trim();
+            if (!name) {
+                context.res = { status: 400, body: JSON.stringify({ error: 'name is required' }) };
+                return;
+            }
+
+            const result = await pool.request()
+                .input('name', sql.NVarChar(100), name)
+                .query(`
+                    UPDATE dbo.DeliverySites
+                    SET is_active = 0,
+                        updated_at_utc = GETUTCDATE()
+                    WHERE name = @name;
+
+                    SELECT @@ROWCOUNT AS affected;
+                `);
+
+            context.res = {
+                status: result.recordset[0].affected ? 200 : 404,
+                body: JSON.stringify({ success: result.recordset[0].affected > 0 })
+            };
+            return;
+        }
+
         if (req.method === 'POST') {
             const name = String((req.body || {}).name || '').trim();
             if (!name) {
