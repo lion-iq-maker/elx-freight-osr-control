@@ -370,6 +370,16 @@
     #receiptModal .receipt-table td { color: #0f172a !important; font-weight: 650 !important; }
     #receiptModal .receipt-table th { color: #475569 !important; font-weight: 900 !important; }
     #receiptModal .receipt-url { color: #475569 !important; }
+  
+    .clear-master-wrap{position:relative;}
+    .clear-master-wrap input{padding-right:38px;}
+    .clear-master-btn{
+      position:absolute;right:9px;bottom:9px;width:24px;height:24px;border:0;
+      border-radius:50%;background:#eef2f6;color:#475569;font-size:16px;font-weight:800;
+      line-height:24px;text-align:center;cursor:pointer;padding:0;display:none;
+    }
+    .clear-master-btn:hover{background:#e2e8f0;color:#111827;}
+    .clear-master-wrap.has-value .clear-master-btn{display:block;}
   </style>
 
   <script src="./vendor/jspdf.umd.min.js"></script>
@@ -442,8 +452,8 @@
               </div>
               <div class="form-panel receive-form-wrap">
                 <div class="field-grid">
-                  <div class="field"><label>Supplier / Sender <span class="req">*</span></label><input id="supplier" list="supplierOptions" placeholder="Select or type supplier"><datalist id="supplierOptions"></datalist></div>
-                  <div class="field"><label>Delivery Site <span class="req">*</span></label><input id="site" list="siteOptions" placeholder="Select or type delivery site"><datalist id="siteOptions"></datalist></div>
+                  <div class="field clear-master-wrap"><label>Supplier / Sender <span class="req">*</span></label><input id="supplier" list="supplierOptions" placeholder="Select or type supplier"><button type="button" class="clear-master-btn" data-clear-target="supplier" aria-label="Clear Supplier / Sender">×</button><datalist id="supplierOptions"></datalist></div>
+                  <div class="field clear-master-wrap"><label>Delivery Site <span class="req">*</span></label><input id="site" list="siteOptions" placeholder="Select or type delivery site"><button type="button" class="clear-master-btn" data-clear-target="site" aria-label="Clear Delivery Site">×</button><datalist id="siteOptions"></datalist></div>
                   <div class="field"><label>PO Number <span class="req">*</span></label><input id="po" placeholder="e.g. 4500871234"></div>
                   <div class="field"><label>Other Reference(s)</label><input id="reference" placeholder="Reference / docket / booking"></div>
                   <div class="field"><label>Connote / Consignment</label><input id="connote" placeholder="e.g. CN-ELX-782291"></div>
@@ -452,7 +462,7 @@
                 <table class="items-table"><tbody id="itemsBody"></tbody></table>
                 <button class="btn btn-ghost" id="addItemBtn">+ Add Freight Item</button>
                 <div style="margin-top:14px;font-weight:900;font-size:12px;">Receiving Details</div>
-                <div class="field-grid" style="margin-top:9px;"><div class="field"><label>Received By <span class="req">*</span></label><input id="receivedBy" list="staffOptions" placeholder="Select or type staff member"><datalist id="staffOptions"></datalist></div><div class="field"><label>Location</label><input id="location" list="locationOptions" placeholder="Select or type receiving location"><datalist id="locationOptions"></datalist></div></div>
+                <div class="field-grid" style="margin-top:9px;"><div class="field clear-master-wrap"><label>Received By <span class="req">*</span></label><input id="receivedBy" list="staffOptions" placeholder="Select or type staff member"><button type="button" class="clear-master-btn" data-clear-target="receivedBy" aria-label="Clear Received By">×</button><datalist id="staffOptions"></datalist></div><div class="field clear-master-wrap"><label>Location</label><input id="location" list="locationOptions" placeholder="Select or type receiving location"><button type="button" class="clear-master-btn" data-clear-target="location" aria-label="Clear Location">×</button><datalist id="locationOptions"></datalist></div></div>
 
                 <div class="field" style="margin-top:9px;">
                   <label>Freight Photo (box / pallet)</label>
@@ -688,6 +698,28 @@
     function tone(status) { return {"Goods Received":"blue","Location Assigned":"purple","Ready for Dispatch":"green","Dispatched":"grey","Delivered":"green","Ready to Invoice":"purple","Rejected":"red"}[status] || "grey"; }
     function showToast(message) { const t=$("toast"); t.textContent=message; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
 
+    function syncMasterClearButtons() {
+      document.querySelectorAll(".clear-master-wrap").forEach(wrap => {
+        const input = wrap.querySelector("input");
+        wrap.classList.toggle("has-value", Boolean(input && input.value.trim()));
+      });
+    }
+
+    document.addEventListener("input", event => {
+      if (event.target.closest(".clear-master-wrap")) syncMasterClearButtons();
+    });
+
+    document.addEventListener("click", event => {
+      const btn = event.target.closest(".clear-master-btn");
+      if (!btn) return;
+      const target = $(btn.dataset.clearTarget);
+      if (!target) return;
+      target.value = "";
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+      target.focus();
+      syncMasterClearButtons();
+    });
+
     const LEGACY_SITE_VALUES = new Set(["bhp carrapateena","bhp carapateena","bhp","perth"]);
 
     function normalizeMatchText(value) {
@@ -871,6 +903,7 @@
       $("pageSubtitle").textContent=titles[view][1];
       $("kpiSection").classList.toggle("hidden", view !== "dashboard");
       renderAll();
+      syncMasterClearButtons();
     }
 
     function getLocalToday() {
