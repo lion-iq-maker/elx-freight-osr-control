@@ -704,7 +704,15 @@
 
     function mapKnownSupplier(rawText) {
       const haystack = " " + normalizeMatchText(rawText) + " ";
-      const suppliers = [...new Set((state.suppliers || []).map(v => String(v || "").trim()).filter(Boolean))];
+      const siteNames = new Set(
+        cleanKnownSites(state.sites || []).map(v => normalizeMatchText(v))
+      );
+      const suppliers = [...new Set(
+        (state.suppliers || [])
+          .map(v => String(v || "").trim())
+          .filter(Boolean)
+          .filter(name => !siteNames.has(normalizeMatchText(name)))
+      )];
 
       // Prefer the strongest full-name match.
       const fullMatches = suppliers
@@ -754,21 +762,16 @@
       return "";
     }
 
-    function extractOcrLineValue(rawText, labels) {
-      const lines = String(rawText || "")
-        .split(/\r?\n/)
-        .map(line => line.trim())
-        .filter(Boolean);
+    function extractOcrTokenValue(rawText, labels) {
+      const raw = String(rawText || "");
 
-      for (const line of lines) {
-        for (const label of labels) {
-          const pattern = new RegExp(
-            "^\\s*" + label + "\\s*[:#-]?\\s*(.+?)\\s*$",
-            "i"
-          );
-          const match = line.match(pattern);
-          if (match && match[1]) return match[1].trim();
-        }
+      for (const label of labels) {
+        const pattern = new RegExp(
+          "(?:^|\\b)" + label + "\\s*[:#-]?\\s*([A-Z0-9][A-Z0-9._\\/-]*)",
+          "i"
+        );
+        const match = raw.match(pattern);
+        if (match && match[1]) return match[1].trim();
       }
       return "";
     }
@@ -788,11 +791,11 @@
 
       // Parse reference/connote from their own OCR line so the next line
       // (for example the PO number) cannot be swallowed into the value.
-      const reference = extractOcrLineValue(raw, [
+      const reference = extractOcrTokenValue(raw, [
         "REF(?:ERENCE)?",
         "OTHER\\s+REF(?:ERENCE)?(?:\\(S\\))?"
       ]);
-      const connote = extractOcrLineValue(raw, [
+      const connote = extractOcrTokenValue(raw, [
         "CONNOTE",
         "CONSIGNMENT(?:\\s+NUMBER)?",
         "CONSIGNMENT\\s+NO"
