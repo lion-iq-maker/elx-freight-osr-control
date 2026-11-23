@@ -702,6 +702,29 @@
       return (values || []).filter(v => !LEGACY_SITE_VALUES.has(normalizeMatchText(v)));
     }
 
+    function isPlausibleSupplierName(name) {
+      const normalized = normalizeMatchText(name);
+      if (!normalized) return false;
+
+      const freightWords = new Set([
+        "pallet","crate","carton","bundle","stillage","parcel",
+        "satchel","basket","ibc","freight","package","pkg","qty",
+        "weight","delivery","deliver","ship","shipping","consignment",
+        "connote","reference","ref"
+      ]);
+
+      const words = normalized.split(" ");
+      if (freightWords.has(words[0])) return false;
+
+      const sites = cleanKnownSites(state.sites || []).map(v => normalizeMatchText(v));
+      if (sites.some(site => site && normalized.includes(site))) return false;
+
+      if (/\b(to|go to|deliver to|ship to|for)\b/.test(normalized) &&
+          sites.some(site => site && normalized.includes(site))) return false;
+
+      return true;
+    }
+
     function mapKnownSupplier(rawText) {
       const haystack = " " + normalizeMatchText(rawText) + " ";
       const siteNames = new Set(
@@ -712,6 +735,7 @@
           .map(v => String(v || "").trim())
           .filter(Boolean)
           .filter(name => !siteNames.has(normalizeMatchText(name)))
+          .filter(name => isPlausibleSupplierName(name))
       )];
 
       // Prefer the strongest full-name match.
