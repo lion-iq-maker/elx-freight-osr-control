@@ -14,6 +14,36 @@ module.exports = async function (context, req) {
     try {
         const pool = await sql.connect(connectionString);
 
+        if (req.method === 'DELETE') {
+            const displayName = String((req.body || {}).displayName || '').trim();
+            if (!displayName) {
+                context.res = {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ error: 'displayName is required' })
+                };
+                return;
+            }
+
+            const result = await pool.request()
+                .input('displayName', sql.NVarChar(100), displayName)
+                .query(`
+                    UPDATE dbo.Staff
+                    SET is_active = 0,
+                        updated_at_utc = GETUTCDATE()
+                    WHERE display_name = @displayName;
+
+                    SELECT @@ROWCOUNT AS affected;
+                `);
+
+            context.res = {
+                status: result.recordset[0].affected ? 200 : 404,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ success: result.recordset[0].affected > 0 })
+            };
+            return;
+        }
+
         if (req.method === 'POST') {
             const displayName = String((req.body || {}).displayName || '').trim();
 
