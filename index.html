@@ -372,14 +372,41 @@
     #receiptModal .receipt-url { color: #475569 !important; }
   
     .clear-master-wrap{position:relative;}
-    .clear-master-wrap input{padding-right:38px;}
+    .clear-master-wrap input{padding-right:68px;}
     .clear-master-btn{
-      position:absolute;right:9px;bottom:9px;width:24px;height:24px;border:0;
+      position:absolute;right:38px;bottom:9px;width:24px;height:24px;border:0;
       border-radius:50%;background:#eef2f6;color:#475569;font-size:16px;font-weight:800;
       line-height:24px;text-align:center;cursor:pointer;padding:0;display:none;
     }
     .clear-master-btn:hover{background:#e2e8f0;color:#111827;}
     .clear-master-wrap.has-value .clear-master-btn{display:block;}
+  
+    .master-list-btn{
+      position:absolute;right:9px;bottom:9px;width:24px;height:24px;border:0;
+      border-radius:50%;background:#eef2f6;color:#475569;font-size:13px;font-weight:900;
+      line-height:24px;text-align:center;cursor:pointer;padding:0;
+    }
+    .master-list-btn:hover{background:#e2e8f0;color:#111827;}
+    .master-option-menu{
+      display:none;position:absolute;z-index:80;left:0;right:0;top:calc(100% + 5px);
+      background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 30px rgba(15,23,42,.14);
+      max-height:230px;overflow:auto;padding:6px;
+    }
+    .master-option-menu.open{display:block;}
+    .master-option-row{
+      display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;
+    }
+    .master-option-row:hover{background:#f8fafc;}
+    .master-option-value{
+      flex:1;border:0;background:transparent;text-align:left;cursor:pointer;padding:2px 0;
+      font:inherit;color:#111827;
+    }
+    .master-option-delete{
+      width:24px;height:24px;border:0;border-radius:50%;background:#fff1f2;color:#be123c;
+      font-size:15px;font-weight:900;cursor:pointer;line-height:24px;padding:0;
+    }
+    .master-option-delete:hover{background:#ffe4e6;}
+    .master-option-empty{padding:9px;color:var(--muted);font-size:11px;}
   </style>
 
   <script src="./vendor/jspdf.umd.min.js"></script>
@@ -452,8 +479,8 @@
               </div>
               <div class="form-panel receive-form-wrap">
                 <div class="field-grid">
-                  <div class="field clear-master-wrap"><label>Supplier / Sender <span class="req">*</span></label><input id="supplier" list="supplierOptions" placeholder="Select or type supplier"><button type="button" class="clear-master-btn" data-clear-target="supplier" aria-label="Clear Supplier / Sender">×</button><datalist id="supplierOptions"></datalist></div>
-                  <div class="field clear-master-wrap"><label>Delivery Site <span class="req">*</span></label><input id="site" list="siteOptions" placeholder="Select or type delivery site"><button type="button" class="clear-master-btn" data-clear-target="site" aria-label="Clear Delivery Site">×</button><datalist id="siteOptions"></datalist></div>
+                  <div class="field clear-master-wrap" data-master-key="suppliers" data-master-endpoint="suppliers" data-master-input="supplier"><label>Supplier / Sender <span class="req">*</span></label><input id="supplier" list="supplierOptions" placeholder="Select or type supplier"><button type="button" class="clear-master-btn" data-clear-target="supplier" aria-label="Clear Supplier / Sender">×</button><button type="button" class="master-list-btn" aria-label="Manage Supplier list">▾</button><div class="master-option-menu"></div><datalist id="supplierOptions"></datalist></div>
+                  <div class="field clear-master-wrap" data-master-key="sites" data-master-endpoint="delivery-sites" data-master-input="site"><label>Delivery Site <span class="req">*</span></label><input id="site" list="siteOptions" placeholder="Select or type delivery site"><button type="button" class="clear-master-btn" data-clear-target="site" aria-label="Clear Delivery Site">×</button><button type="button" class="master-list-btn" aria-label="Manage Delivery Site list">▾</button><div class="master-option-menu"></div><datalist id="siteOptions"></datalist></div>
                   <div class="field"><label>PO Number <span class="req">*</span></label><input id="po" placeholder="e.g. 4500871234"></div>
                   <div class="field"><label>Other Reference(s)</label><input id="reference" placeholder="Reference / docket / booking"></div>
                   <div class="field"><label>Connote / Consignment</label><input id="connote" placeholder="e.g. CN-ELX-782291"></div>
@@ -462,7 +489,7 @@
                 <table class="items-table"><tbody id="itemsBody"></tbody></table>
                 <button class="btn btn-ghost" id="addItemBtn">+ Add Freight Item</button>
                 <div style="margin-top:14px;font-weight:900;font-size:12px;">Receiving Details</div>
-                <div class="field-grid" style="margin-top:9px;"><div class="field clear-master-wrap"><label>Received By <span class="req">*</span></label><input id="receivedBy" list="staffOptions" placeholder="Select or type staff member"><button type="button" class="clear-master-btn" data-clear-target="receivedBy" aria-label="Clear Received By">×</button><datalist id="staffOptions"></datalist></div><div class="field clear-master-wrap"><label>Location</label><input id="location" list="locationOptions" placeholder="Select or type receiving location"><button type="button" class="clear-master-btn" data-clear-target="location" aria-label="Clear Location">×</button><datalist id="locationOptions"></datalist></div></div>
+                <div class="field-grid" style="margin-top:9px;"><div class="field clear-master-wrap" data-master-key="staff" data-master-endpoint="staff" data-master-input="receivedBy"><label>Received By <span class="req">*</span></label><input id="receivedBy" list="staffOptions" placeholder="Select or type staff member"><button type="button" class="clear-master-btn" data-clear-target="receivedBy" aria-label="Clear Received By">×</button><button type="button" class="master-list-btn" aria-label="Manage Received By list">▾</button><div class="master-option-menu"></div><datalist id="staffOptions"></datalist></div><div class="field clear-master-wrap" data-master-key="locations" data-master-endpoint="locations" data-master-input="location"><label>Location</label><input id="location" list="locationOptions" placeholder="Select or type receiving location"><button type="button" class="clear-master-btn" data-clear-target="location" aria-label="Clear Location">×</button><button type="button" class="master-list-btn" aria-label="Manage Location list">▾</button><div class="master-option-menu"></div><datalist id="locationOptions"></datalist></div></div>
 
                 <div class="field" style="margin-top:9px;">
                   <label>Freight Photo (box / pallet)</label>
@@ -705,11 +732,92 @@
       });
     }
 
+    function renderMasterOptionMenus() {
+      document.querySelectorAll(".clear-master-wrap[data-master-key]").forEach(wrap => {
+        const key = wrap.dataset.masterKey;
+        const menu = wrap.querySelector(".master-option-menu");
+        if (!menu) return;
+        const values = [...new Set((state[key] || []).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+        menu.innerHTML = values.length
+          ? values.map(value => `
+              <div class="master-option-row">
+                <button type="button" class="master-option-value" data-value="${esc(value)}">${esc(value)}</button>
+                <button type="button" class="master-option-delete" data-value="${esc(value)}" aria-label="Remove ${esc(value)}">×</button>
+              </div>`).join("")
+          : '<div class="master-option-empty">No saved options</div>';
+      });
+    }
+
+    async function deleteMasterOption(wrap, value) {
+      const endpoint = wrap.dataset.masterEndpoint;
+      const key = wrap.dataset.masterKey;
+      const inputId = wrap.dataset.masterInput;
+      const body = endpoint === "staff" ? { displayName: value } : { name: value };
+
+      if (!window.confirm(`Remove "${value}" from this saved list?`)) return;
+
+      try {
+        const r = await fetch(`${API_BASE}/${endpoint}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        if (!r.ok) throw new Error(await r.text());
+
+        state[key] = (state[key] || []).filter(x => x !== value);
+        if ($(inputId)?.value === value) {
+          $(inputId).value = "";
+          $(inputId).dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        saveState();
+        syncMasterData();
+        if (key === "locations") populateLocationFilter();
+        showToast("Removed from saved list");
+      } catch (err) {
+        console.error("Master-data delete failed:", endpoint, err);
+        showToast("Could not remove saved option");
+      }
+    }
+
     document.addEventListener("input", event => {
       if (event.target.closest(".clear-master-wrap")) syncMasterClearButtons();
     });
 
     document.addEventListener("click", event => {
+      const listBtn = event.target.closest(".master-list-btn");
+      if (listBtn) {
+        const wrap = listBtn.closest(".clear-master-wrap");
+        const menu = wrap?.querySelector(".master-option-menu");
+        document.querySelectorAll(".master-option-menu.open").forEach(x => {
+          if (x !== menu) x.classList.remove("open");
+        });
+        renderMasterOptionMenus();
+        menu?.classList.toggle("open");
+        return;
+      }
+
+      const optionValue = event.target.closest(".master-option-value");
+      if (optionValue) {
+        const wrap = optionValue.closest(".clear-master-wrap");
+        const target = $(wrap.dataset.masterInput);
+        target.value = optionValue.dataset.value;
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+        wrap.querySelector(".master-option-menu")?.classList.remove("open");
+        syncMasterClearButtons();
+        return;
+      }
+
+      const optionDelete = event.target.closest(".master-option-delete");
+      if (optionDelete) {
+        const wrap = optionDelete.closest(".clear-master-wrap");
+        deleteMasterOption(wrap, optionDelete.dataset.value);
+        return;
+      }
+
+      if (!event.target.closest(".clear-master-wrap")) {
+        document.querySelectorAll(".master-option-menu.open").forEach(x => x.classList.remove("open"));
+      }
+
       const btn = event.target.closest(".clear-master-btn");
       if (!btn) return;
       const target = $(btn.dataset.clearTarget);
@@ -1546,6 +1654,7 @@
       datalist("locationOptions", state.locations || []);
       datalist("siteOptions", state.sites || []);
       datalist("supplierOptions", state.suppliers || []);
+      renderMasterOptionMenus();
 
       if ($("staffList")) $("staffList").innerHTML=(state.staff||[]).map(s=>`<div class="staff-line"><span>${esc(s)}</span></div>`).join("");
       if ($("locationList")) $("locationList").innerHTML=(state.locations||[]).map(s=>`<div class="staff-line"><span>${esc(s)}</span></div>`).join("");
@@ -2374,14 +2483,13 @@
             const d = await r.json();
             let values = map(d);
             if (key === 'sites') values = cleanKnownSites(values);
-            if (Array.isArray(values) && values.length) state[key] = values;
+            if (Array.isArray(values)) state[key] = values;
           }
         } catch (e) {
           console.warn(endpoint + ' API failed, using local fallback');
         }
       }
 
-      state.sites = [...new Set([...DEFAULT_SITES, ...cleanKnownSites(state.sites || [])])];
       syncMasterData();
       populateLocationFilter();
     }
