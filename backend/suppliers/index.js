@@ -9,10 +9,40 @@ module.exports = async function (context, req) {
     try {
         const pool = await sql.connect(connectionString);
 
+        const normalizeName = value =>
+            String(value || '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+        const looksLikeFreightInstruction = value => {
+            const normalized = normalizeName(value);
+            if (!normalized) return true;
+
+            const freightWords = new Set([
+                'pallet','crate','carton','bundle','stillage','parcel',
+                'satchel','basket','ibc','freight','package','pkg','qty',
+                'weight','delivery','deliver','ship','shipping','consignment',
+                'connote','reference','ref'
+            ]);
+
+            const first = normalized.split(' ')[0];
+            return freightWords.has(first);
+        };
+
         if (req.method === 'POST') {
             const name = String((req.body || {}).name || '').trim();
             if (!name) {
                 context.res = { status: 400, body: JSON.stringify({ error: 'name is required' }) };
+                return;
+            }
+
+            if (looksLikeFreightInstruction(name)) {
+                context.res = {
+                    status: 400,
+                    body: JSON.stringify({ error: 'Freight instruction text cannot be saved as a Supplier' })
+                };
                 return;
             }
 
