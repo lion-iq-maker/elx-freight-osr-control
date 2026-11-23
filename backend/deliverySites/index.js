@@ -9,10 +9,17 @@ module.exports = async function (context, req) {
     try {
         const pool = await sql.connect(connectionString);
 
+        const normalizeName = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        const legacyNames = new Set(['bhp carrapateena','bhp carapateena','bhp','perth']);
+
         if (req.method === 'POST') {
             const name = String((req.body || {}).name || '').trim();
             if (!name) {
                 context.res = { status: 400, body: JSON.stringify({ error: 'name is required' }) };
+                return;
+            }
+            if (legacyNames.has(normalizeName(name))) {
+                context.res = { status: 400, body: JSON.stringify({ error: 'Legacy delivery site is not allowed' }) };
                 return;
             }
 
@@ -43,6 +50,7 @@ module.exports = async function (context, req) {
             SELECT id, name, is_active AS isActive, sort_order AS sortOrder
             FROM dbo.DeliverySites
             WHERE is_active = 1
+              AND LOWER(LTRIM(RTRIM(name))) NOT IN ('bhp carrapateena','bhp carapateena','bhp','perth')
             ORDER BY sort_order ASC, name ASC
         `);
         context.res = { status: 200, body: JSON.stringify({ deliverySites: result.recordset }) };

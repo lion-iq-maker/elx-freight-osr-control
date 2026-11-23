@@ -444,7 +444,7 @@
                 <div class="field-grid">
                   <div class="field"><label>Supplier / Sender <span class="req">*</span></label><input id="supplier" list="supplierOptions" placeholder="Select or type supplier"><datalist id="supplierOptions"></datalist></div>
                   <div class="field"><label>Delivery Site <span class="req">*</span></label><input id="site" list="siteOptions" placeholder="Select or type delivery site"><datalist id="siteOptions"></datalist></div>
-                  <div class="field"><label>PO Number</label><input id="po" placeholder="e.g. 4500871234"></div>
+                  <div class="field"><label>PO Number <span class="req">*</span></label><input id="po" placeholder="e.g. 4500871234"></div>
                   <div class="field"><label>Other Reference(s)</label><input id="reference" placeholder="Reference / docket / booking"></div>
                   <div class="field"><label>Connote / Consignment</label><input id="connote" placeholder="e.g. CN-ELX-782291"></div>
                 </div>
@@ -687,6 +687,88 @@
     function fmt(v) { return new Date(v).toLocaleString([],{day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"}); }
     function tone(status) { return {"Goods Received":"blue","Location Assigned":"purple","Ready for Dispatch":"green","Dispatched":"grey","Delivered":"green","Ready to Invoice":"purple","Rejected":"red"}[status] || "grey"; }
     function showToast(message) { const t=$("toast"); t.textContent=message; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
+
+    const LEGACY_SITE_VALUES = new Set(["bhp carrapateena","bhp carapateena","bhp","perth"]);
+
+    function normalizeMatchText(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function cleanKnownSites(values) {
+      return (values || []).filter(v => !LEGACY_SITE_VALUES.has(normalizeMatchText(v)));
+    }
+
+    function mapKnownSupplier(rawText) {
+      const haystack = " " + normalizeMatchText(rawText) + " ";
+      const suppliers = [...new Set((state.suppliers || []).map(v => String(v || "").trim()).filter(Boolean))];
+
+      // Prefer the strongest full-name match.
+      const fullMatches = suppliers
+        .filter(name => {
+          const normalized = normalizeMatchText(name);
+          return normalized && haystack.includes(" " + normalized + " ");
+        })
+        .sort((a,b) => b.length - a.length);
+      if (fullMatches.length) return fullMatches[0];
+
+      // Then match the first word of a known supplier. If several suppliers
+      // share that same first word, do not guess.
+      const byFirstWord = new Map();
+      suppliers.forEach(name => {
+        const first = normalizeMatchText(name).split(" ")[0];
+        if (!first || first.length < 3) return;
+        if (!byFirstWord.has(first)) byFirstWord.set(first, []);
+        byFirstWord.get(first).push(name);
+      });
+
+      for (const [first, names] of byFirstWord.entries()) {
+        if (haystack.includes(" " + first + " ") && names.length === 1) {
+          return names[0];
+        }
+      }
+      return "";
+    }
+
+    function mapKnownSite(rawText) {
+      const haystack = " " + normalizeMatchText(rawText) + " ";
+      const sites = cleanKnownSites(state.sites || []);
+
+      // Prefer full site name first.
+      const fullMatches = sites
+        .filter(name => {
+          const normalized = normalizeMatchText(name);
+          return normalized && haystack.includes(" " + normalized + " ");
+        })
+        .sort((a,b) => b.length - a.length);
+      if (fullMatches.length) return fullMatches[0];
+
+      // Then allow any meaningful word from the saved site name.
+      for (const site of sites) {
+        const words = normalizeMatchText(site).split(" ").filter(w => w.length >= 4);
+        if (words.some(word => haystack.includes(" " + word + " "))) return site;
+      }
+      return "";
+    }
+
+    function mapPerthDynoOcr(extracted, rawText) {
+      const mapped = { ...(extracted || {}) };
+      const raw = String(rawText || "");
+
+      const knownSupplier = mapKnownSupplier(raw);
+      if (knownSupplier) mapped.supplier = knownSupplier;
+
+      const knownSite = mapKnownSite(raw);
+      if (knownSite) mapped.site = knownSite;
+
+      const poMatch = raw.match(/\b(450\d{7})\b/);
+      mapped.po = poMatch ? poMatch[1] : "";
+
+      return mapped;
+    }
 
     const titles = {
       dashboard:["ELX Freight Control","Perth Dyno freight visibility from supplier receipt to site delivery and invoice readiness."],
@@ -1614,8 +1696,8 @@
         if (!ocrResponse.ok) throw new Error(data.error || "OCR failed");
 
         console.log("📋 Full OCR response:", data);
-        const extracted = data.extracted || {};
-        console.log("📦 Extracted freight fields:", extracted);
+        const extracted = mapPerthDynoOcr(data.extracted || {}, data.rawText || "");
+        console.log("📦 Extracted + mapped freight fields:", extracted);
         console.log("🔎 Extraction sources:", data.extractionSource || {});
 
         $("ocrSupplier").value = extracted.supplier || "";
@@ -1721,9 +1803,17 @@
       const missing = [];
       if(!$("supplier").value.trim()) missing.push("Supplier");
       if(!$("site").value) missing.push("Delivery Site");
+      if(!$("po").value.trim()) missing.push("PO Number");
       if(!$("receivedBy").value) missing.push("Received By");
       if(missing.length) {
         showToast("Complete: " + missing.join(", "));
+        return;
+      }
+
+      const poValue = $("po").value.trim();
+      if (!/^450\d{7}$/.test(poValue)) {
+        showToast("PO Number must be exactly 10 digits and start with 450");
+        $("po").focus();
         return;
       }
 
@@ -1739,7 +1829,7 @@
       const payload = {
         supplier: $("supplier").value.trim(),
         site: $("site").value,
-        po: $("po").value.trim() || null,
+        po: poValue,
         reference: $("reference").value.trim() || null,
         connote: $("connote").value.trim() || null,
         notes: $("notes").value.trim() || null,
@@ -1750,13 +1840,6 @@
         labelPhoto: labelPhotoBase64,
         freightPhoto: freightPhotoBase64
       };
-
-      await Promise.all([
-        upsertMaster('suppliers', x=>({name:x}), 'suppliers', $("supplier").value),
-        upsertMaster('delivery-sites', x=>({name:x}), 'sites', $("site").value),
-        upsertMaster('staff', x=>({displayName:x}), 'staff', $("receivedBy").value),
-        $("location").value ? upsertMaster('locations', x=>({name:x}), 'locations', $("location").value) : Promise.resolve()
-      ]);
 
       const btn = $("confirmReceiveBtn");
       btn.disabled = true;
@@ -1774,6 +1857,12 @@
         if (!response.ok) {
           throw new Error(data.error || 'Failed to create receipt');
         }
+
+        // Learn master data only after the GR has been successfully created.
+        await Promise.all([
+          upsertMaster('suppliers', x=>({name:x}), 'suppliers', payload.supplier),
+          upsertMaster('delivery-sites', x=>({name:x}), 'sites', payload.site)
+        ]);
 
         const localRecord = {
           id: data.grNumber,
@@ -2166,7 +2255,8 @@
           const r = await fetch(`${API_BASE}/${endpoint}`);
           if (r.ok) {
             const d = await r.json();
-            const values = map(d);
+            let values = map(d);
+            if (key === 'sites') values = cleanKnownSites(values);
             if (Array.isArray(values) && values.length) state[key] = values;
           }
         } catch (e) {
@@ -2174,6 +2264,7 @@
         }
       }
 
+      state.sites = [...new Set([...DEFAULT_SITES, ...cleanKnownSites(state.sites || [])])];
       syncMasterData();
       populateLocationFilter();
     }
@@ -2200,17 +2291,6 @@
         showToast('Could not save new option: ' + clean);
       }
     }
-
-    const autoSaveFields = [
-      ['supplier','suppliers',v=>({name:v}),'suppliers'],
-      ['site','delivery-sites',v=>({name:v}),'sites'],
-      ['receivedBy','staff',v=>({displayName:v}),'staff'],
-      ['location','locations',v=>({name:v}),'locations']
-    ];
-    autoSaveFields.forEach(([id,endpoint,payload,key]) => {
-      $(id)?.addEventListener('change', () => upsertMaster(endpoint,payload,key,$(id).value));
-      $(id)?.addEventListener('blur', () => upsertMaster(endpoint,payload,key,$(id).value));
-    });
 
     populateLocationDropdown();
     populateLocationFilter();

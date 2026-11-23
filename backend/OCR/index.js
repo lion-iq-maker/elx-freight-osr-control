@@ -339,7 +339,7 @@ module.exports = async function (context, req) {
             //
             // Only map PO if:
             // - exactly 10 digits
-            // - starts with 450, 451 or 452
+            // - starts with 450
             // --------------------------------------------------------
             if (field === 'po') {
                 const poCandidate =
@@ -348,7 +348,7 @@ module.exports = async function (context, req) {
                         ''
                     );
 
-                return /^45[0-2]\d{7}$/.test(
+                return /^450\d{7}$/.test(
                     poCandidate
                 );
             }
@@ -1158,7 +1158,7 @@ module.exports = async function (context, req) {
         //
         // Only recognise a PO if:
         // - exactly 10 digits
-        // - starts with 450, 451 or 452
+        // - starts with 450
         // ============================================================
         if (
             !extracted.po &&
@@ -1166,7 +1166,7 @@ module.exports = async function (context, req) {
         ) {
             const poMatch =
                 rawText.match(
-                    /\b(45[0-2]\d{7})\b/
+                    /\b(450\d{7})\b/
                 );
 
             if (
@@ -1176,7 +1176,7 @@ module.exports = async function (context, req) {
                     poMatch[1];
 
                 extractionSource.po =
-                    'po-rule-45x';
+                    'po-rule-450';
             }
         }
 

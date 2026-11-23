@@ -431,12 +431,21 @@ async function handleTransition(context, req, connectionString) {
 // ========== HANDLE POST (Create Receipt) ==========
 async function handlePost(context, req, connectionString) {
     const body = req.body || {};
-    const required = ['supplier', 'site', 'receivedBy'];
+    const required = ['supplier', 'site', 'po', 'receivedBy'];
     const missing = required.filter(f => !body[f]);
     if (missing.length) {
         context.res = {
             status: 400,
             body: JSON.stringify({ error: `Missing required fields: ${missing.join(', ')}` })
+        };
+        return;
+    }
+
+    const po = String(body.po || '').trim();
+    if (!/^450\d{7}$/.test(po)) {
+        context.res = {
+            status: 400,
+            body: JSON.stringify({ error: 'PO Number must be exactly 10 digits and start with 450' })
         };
         return;
     }
@@ -513,7 +522,7 @@ async function handlePost(context, req, connectionString) {
                 .input('grNumber', sql.NVarChar, grNumber)
                 .input('supplier', sql.NVarChar, body.supplier)
                 .input('site', sql.NVarChar, body.site)
-                .input('po', sql.NVarChar, body.po || null)
+                .input('po', sql.NVarChar, po)
                 .input('reference', sql.NVarChar, body.reference || null)
                 .input('connote', sql.NVarChar, body.connote || null)
                 .input('notes', sql.NVarChar, body.notes || null)
