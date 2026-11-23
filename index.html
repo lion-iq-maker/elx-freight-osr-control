@@ -725,8 +725,24 @@
       return true;
     }
 
+    function normalizeSupplierOcrText(rawText) {
+      const normalized = normalizeMatchText(rawText);
+
+      // OCR can occasionally prefix a supplier token with a stray digit,
+      // e.g. "7MM ELECTRICAL" instead of "MM ELECTRICAL".
+      // Remove only a leading digit prefix when the remainder is alphabetic.
+      return normalized
+        .split(" ")
+        .map(token => {
+          const match = token.match(/^\d+([a-z]{2,})$/);
+          return match ? match[1] : token;
+        })
+        .join(" ");
+    }
+
     function mapKnownSupplier(rawText) {
       const haystack = " " + normalizeMatchText(rawText) + " ";
+      const cleanedHaystack = " " + normalizeSupplierOcrText(rawText) + " ";
       const siteNames = new Set(
         cleanKnownSites(state.sites || []).map(v => normalizeMatchText(v))
       );
@@ -742,7 +758,10 @@
       const fullMatches = suppliers
         .filter(name => {
           const normalized = normalizeMatchText(name);
-          return normalized && haystack.includes(" " + normalized + " ");
+          return normalized && (
+            haystack.includes(" " + normalized + " ") ||
+            cleanedHaystack.includes(" " + normalized + " ")
+          );
         })
         .sort((a,b) => b.length - a.length);
       if (fullMatches.length) return fullMatches[0];
@@ -758,7 +777,11 @@
       });
 
       for (const [first, names] of byFirstWord.entries()) {
-        if (haystack.includes(" " + first + " ") && names.length === 1) {
+        if (
+          (haystack.includes(" " + first + " ") ||
+           cleanedHaystack.includes(" " + first + " ")) &&
+          names.length === 1
+        ) {
           return names[0];
         }
       }
